@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import MatrixEffect from "./MatrixEffect";
 
 interface GameLayoutProps {
   children: ReactNode;
@@ -18,19 +19,37 @@ const GameLayout = ({ children, isCompiling }: GameLayoutProps) => {
         <div className="h-[70%] mb-4">{children}</div>
 
         {/* Terminal (30%) */}
-        <div className="h-[30%] bg-black/50 rounded-lg p-4 border border-green-500/30">
-          <div className="h-full overflow-auto terminal-text">
-            {isCompiling ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-green-400"
-              >
-                Compiling...
-              </motion.div>
-            ) : (
-              <div className="text-green-400">Ready for compilation...</div>
-            )}
+        <div className="h-[30%] bg-black/50 rounded-lg p-4 border border-green-500/30 relative">
+          <MatrixEffect isActive={isCompiling} />
+          <div className="h-full overflow-auto terminal-text relative z-10">
+            <AnimatePresence mode="wait">
+              {isCompiling ? (
+                <motion.div
+                  key="compiling"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-green-400 font-mono"
+                >
+                  <div className="mb-2">
+                    Initializing compilation process...
+                  </div>
+                  <div className="mb-2">Analyzing block sequence...</div>
+                  <div className="mb-2">Validating dependencies...</div>
+                  <div>Compiling code blocks...</div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="ready"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-green-400"
+                >
+                  Ready for compilation...
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

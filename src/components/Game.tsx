@@ -3,6 +3,7 @@ import GameLayout from "./GameLayout";
 import BlockList, { type Block } from "./BlockList";
 import WorkspaceArea from "./WorkspaceArea";
 import InfoPanel from "./InfoPanel";
+import { useKeyboardNavigation } from "../hooks/useKeyboardNavigation";
 
 interface GameProps {
   availableBlocks: Block[];
@@ -33,6 +34,14 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
     }, 3000);
   }, [workspace.length, maxBlocks]);
 
+  const { activeColumn, selectedIndex } = useKeyboardNavigation({
+    availableBlocks,
+    workspace,
+    onBlockSelect: handleBlockSelect,
+    onWorkspaceChange: handleWorkspaceChange,
+    onCompile: handleCompile,
+  });
+
   return (
     <GameLayout isCompiling={isCompiling}>
       <div className="h-full flex flex-col">
@@ -40,7 +49,11 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
           {/* Available Blocks */}
           <BlockList
             blocks={availableBlocks}
-            selectedBlockId={selectedBlock?.id ?? null}
+            selectedBlockId={
+              activeColumn === "blocks"
+                ? availableBlocks[selectedIndex]?.id ?? null
+                : selectedBlock?.id ?? null
+            }
             onBlockSelect={handleBlockSelect}
           />
 
@@ -49,10 +62,20 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
             workspace={workspace}
             onWorkspaceChange={handleWorkspaceChange}
             maxBlocks={maxBlocks}
+            activeIndex={activeColumn === "workspace" ? selectedIndex : -1}
           />
 
           {/* Info Panel */}
-          <InfoPanel selectedBlock={selectedBlock} hint={hint} />
+          <InfoPanel
+            selectedBlock={
+              activeColumn === "blocks"
+                ? availableBlocks[selectedIndex] ?? null
+                : activeColumn === "workspace"
+                ? workspace[selectedIndex] ?? null
+                : selectedBlock
+            }
+            hint={hint}
+          />
         </div>
 
         {/* Compile Button */}

@@ -17,12 +17,14 @@ interface WorkspaceAreaProps {
   workspace: Block[];
   onWorkspaceChange: (blocks: Block[]) => void;
   maxBlocks: number;
+  activeIndex: number;
 }
 
 const WorkspaceArea = ({
   workspace,
   onWorkspaceChange,
   maxBlocks,
+  activeIndex,
 }: WorkspaceAreaProps) => {
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event;
@@ -73,11 +75,11 @@ const WorkspaceArea = ({
                 items={workspace}
                 strategy={verticalListSortingStrategy}
               >
-                {workspace.map((block) => (
+                {workspace.map((block, index) => (
                   <BlockComponent
                     key={block.id}
                     {...block}
-                    isSelected={false}
+                    isSelected={index === activeIndex}
                   />
                 ))}
               </SortableContext>
