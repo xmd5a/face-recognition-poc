@@ -9,34 +9,49 @@ interface GameLayoutProps {
 
 const GameLayout = ({ children, isCompiling }: GameLayoutProps) => {
   return (
-    <div className="min-h-screen bg-[#1A1A1A] text-green-500 font-mono relative overflow-hidden">
+    <div className="relative min-h-screen bg-[#1A1A1A] text-green-500 font-mono overflow-hidden">
       {/* CRT Overlay */}
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent to-black opacity-15 animate-scanline" />
+      <div className="fixed inset-0 pointer-events-none">
+        {/* Scanlines */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/15 animate-scanline" />
+        {/* Screen flicker */}
+        <div className="absolute inset-0 bg-white/[0.007] animate-flicker" />
+        {/* CRT curvature */}
+        <div className="absolute inset-0 bg-gradient-radial from-transparent to-black/20" />
+      </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6 h-screen flex flex-col">
+      <div className="relative container mx-auto px-6 py-8 h-screen flex flex-col">
         {/* Game Area (70%) */}
-        <div className="h-[70%] mb-4">{children}</div>
+        <div className="h-[70%] mb-6">
+          <div className="h-full bg-black/20 rounded-lg border border-green-500/10 shadow-lg backdrop-blur-sm">
+            {children}
+          </div>
+        </div>
 
         {/* Terminal (30%) */}
-        <div className="h-[30%] bg-black/50 rounded-lg p-4 border border-green-500/30 relative">
+        <div className="h-[30%] bg-black/30 rounded-lg border border-green-500/20 shadow-lg backdrop-blur-sm relative overflow-hidden">
+          {/* Matrix Effect */}
           <MatrixEffect isActive={isCompiling} />
-          <div className="h-full overflow-auto terminal-text relative z-10">
+
+          {/* Terminal Content */}
+          <div className="relative z-10 h-full p-6 overflow-auto terminal-text">
             <AnimatePresence mode="wait">
               {isCompiling ? (
                 <motion.div
                   key="compiling"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-green-400 font-mono"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-2 text-green-400"
                 >
-                  <div className="mb-2">
-                    Initializing compilation process...
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 mr-3 bg-green-500 rounded-full animate-pulse" />
+                    <span>Initializing compilation process...</span>
                   </div>
-                  <div className="mb-2">Analyzing block sequence...</div>
-                  <div className="mb-2">Validating dependencies...</div>
-                  <div>Compiling code blocks...</div>
+                  <div className="pl-7">Analyzing block sequence...</div>
+                  <div className="pl-7">Validating dependencies...</div>
+                  <div className="pl-7">Compiling code blocks...</div>
                 </motion.div>
               ) : (
                 <motion.div
@@ -44,9 +59,10 @@ const GameLayout = ({ children, isCompiling }: GameLayoutProps) => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="text-green-400"
+                  className="flex items-center text-green-400/70"
                 >
-                  Ready for compilation...
+                  <div className="w-4 h-4 mr-3 bg-green-500/50 rounded-full" />
+                  <span>Ready for compilation...</span>
                 </motion.div>
               )}
             </AnimatePresence>

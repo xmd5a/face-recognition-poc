@@ -1,35 +1,55 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import Game from "./components/Game";
+import { type Block } from "./components/BlockList";
+
+const exampleBlocks: Block[] = [
+  {
+    id: "1",
+    name: "loadImage()",
+    description: "Loads an image from the source.",
+  },
+  {
+    id: "2",
+    name: "resizeImage()",
+    description: "Resizes the image to a standard format.",
+  },
+  { id: "3", name: "detectFace()", description: "Detects faces in the image." },
+  {
+    id: "4",
+    name: "extractFeatures()",
+    description: "Extracts facial features (embedding).",
+  },
+  {
+    id: "5",
+    name: "compareWithDatabase()",
+    description: "Compares with known faces database.",
+  },
+  { id: "6", name: "getIdentity()", description: "Determines identity." },
+  { id: "7", name: "logResult()", description: "Logs the result." },
+  {
+    id: "8",
+    name: "displayResult()",
+    description: "Displays identification result.",
+  },
+];
+
+const hint = `
+# Face Recognition Pipeline
+
+Arrange the blocks to create a face recognition pipeline. The pipeline should:
+1. Load and prepare the image
+2. Detect and analyze faces
+3. Compare with database
+4. Handle results
+
+**Tip:** Start with image loading and preprocessing before face detection.
+`;
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="min-h-screen bg-[#1A1A1A]">
+      <Game availableBlocks={exampleBlocks} maxBlocks={5} hint={hint} />
+    </div>
+  );
 }
 
-export default App
+export default App;

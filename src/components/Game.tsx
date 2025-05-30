@@ -45,59 +45,68 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
   return (
     <GameLayout isCompiling={isCompiling}>
       <div className="h-full flex flex-col">
-        <div className="flex-1 grid grid-cols-3 gap-4">
-          {/* Available Blocks */}
-          <BlockList
-            blocks={availableBlocks}
-            selectedBlockId={
-              activeColumn === "blocks"
-                ? availableBlocks[selectedIndex]?.id ?? null
-                : selectedBlock?.id ?? null
-            }
-            onBlockSelect={handleBlockSelect}
-          />
+        {/* Main Content Area */}
+        <div className="flex-1 grid grid-cols-12 gap-6 p-6">
+          {/* Available Blocks - Left Column (30%) */}
+          <div className="col-span-4">
+            <BlockList
+              blocks={availableBlocks}
+              selectedBlockId={
+                activeColumn === "blocks"
+                  ? availableBlocks[selectedIndex]?.id ?? null
+                  : selectedBlock?.id ?? null
+              }
+              onBlockSelect={handleBlockSelect}
+            />
+          </div>
 
-          {/* Workspace */}
-          <WorkspaceArea
-            workspace={workspace}
-            onWorkspaceChange={handleWorkspaceChange}
-            maxBlocks={maxBlocks}
-            activeIndex={activeColumn === "workspace" ? selectedIndex : -1}
-          />
+          {/* Workspace - Middle Column (30%) */}
+          <div className="col-span-4">
+            <WorkspaceArea
+              workspace={workspace}
+              onWorkspaceChange={handleWorkspaceChange}
+              maxBlocks={maxBlocks}
+              activeIndex={activeColumn === "workspace" ? selectedIndex : -1}
+            />
+          </div>
 
-          {/* Info Panel */}
-          <InfoPanel
-            selectedBlock={
-              activeColumn === "blocks"
-                ? availableBlocks[selectedIndex] ?? null
-                : activeColumn === "workspace"
-                ? workspace[selectedIndex] ?? null
-                : selectedBlock
-            }
-            hint={hint}
-          />
+          {/* Info Panel - Right Column (30%) */}
+          <div className="col-span-4">
+            <InfoPanel
+              selectedBlock={
+                activeColumn === "blocks"
+                  ? availableBlocks[selectedIndex] ?? null
+                  : activeColumn === "workspace"
+                  ? workspace[selectedIndex] ?? null
+                  : selectedBlock
+              }
+              hint={hint}
+            />
+          </div>
         </div>
 
         {/* Compile Button */}
-        <button
-          onClick={handleCompile}
-          disabled={workspace.length < maxBlocks || isCompiling}
-          className={`
-            mt-4 w-full py-3 px-6 rounded-lg font-mono
-            ${
-              workspace.length < maxBlocks || isCompiling
-                ? "bg-black/30 text-green-500/50 cursor-not-allowed"
-                : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-            }
-            transition-colors
-          `}
-        >
-          {isCompiling
-            ? "Compiling..."
-            : workspace.length < maxBlocks
-            ? `Need ${maxBlocks - workspace.length} more blocks`
-            : "Compile"}
-        </button>
+        <div className="px-6 pb-6">
+          <button
+            onClick={handleCompile}
+            disabled={workspace.length < maxBlocks || isCompiling}
+            className={`
+              w-full py-4 px-6 rounded-lg font-mono text-lg
+              border-2 transition-all duration-200
+              ${
+                workspace.length < maxBlocks || isCompiling
+                  ? "bg-black/30 text-green-500/50 border-green-500/20 cursor-not-allowed"
+                  : "bg-green-500/20 text-green-400 border-green-500/40 hover:bg-green-500/30 hover:border-green-500/60 focus:outline-none focus:ring-2 focus:ring-green-500/50"
+              }
+            `}
+          >
+            {isCompiling
+              ? "Compiling..."
+              : workspace.length < maxBlocks
+              ? `Need ${maxBlocks - workspace.length} more blocks`
+              : "Compile"}
+          </button>
+        </div>
       </div>
     </GameLayout>
   );
