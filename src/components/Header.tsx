@@ -12,7 +12,7 @@ const Header = ({ levelInfo }: HeaderProps) => {
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
           <h1 className="text-xl font-bold terminal-text">{levelInfo.title}</h1>
-          <div className="text-sm opacity-70 -mt-4">
+          <div className="text-sm opacity-70">
             Blocks: {levelInfo.currentBlocks}/{levelInfo.requiredBlocks}
           </div>
         </div>

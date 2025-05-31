@@ -6,6 +6,7 @@ export interface Block {
   id: string;
   name: string;
   description: string;
+  command: string;
 }
 
 interface BlockItemProps {
@@ -164,11 +165,6 @@ const BlockList = ({
             onHover={setHoveredBlock}
           />
         ))}
-        {blocks.length === 0 && (
-          <div className="text-terminal-green/30 text-center py-4">
-            No blocks available
-          </div>
-        )}
       </div>
       <BlockDescription block={displayedBlock} />
     </div>

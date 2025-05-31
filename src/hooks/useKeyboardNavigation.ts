@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { type Block } from "../components/BlockList";
 
-type Column = "blocks" | "workspace" | "info";
+type Column = "blocks" | "workspace";
 
 interface UseKeyboardNavigationProps {
   availableBlocks: Block[];
@@ -39,18 +39,6 @@ export const useKeyboardNavigation = ({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (activeColumn === "info") {
-        if (event.key === "ArrowLeft") {
-          event.preventDefault();
-          setActiveColumn("workspace");
-          const newIndex = getValidIndex(indices.workspace, "workspace");
-          setIndices((prev) => ({ ...prev, workspace: newIndex }));
-          const block = workspace[newIndex];
-          if (block) onBlockSelect(block);
-        }
-        return;
-      }
-
       const { list, maxIndex } = getCurrentListInfo(activeColumn);
       let newIndex: number;
 
@@ -94,9 +82,6 @@ export const useKeyboardNavigation = ({
             if (workspace[newIndex]) {
               onBlockSelect(workspace[newIndex]);
             }
-          } else if (activeColumn === "workspace") {
-            setActiveColumn("info");
-            onBlockSelect({} as Block); // Clear selection
           }
           break;
 
@@ -150,6 +135,6 @@ export const useKeyboardNavigation = ({
     activeColumn,
     setActiveColumn,
     indices,
-    selectedIndex: indices[activeColumn as keyof typeof indices] || 0,
+    selectedIndex: indices[activeColumn] || 0,
   };
 };

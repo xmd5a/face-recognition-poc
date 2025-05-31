@@ -6,6 +6,7 @@ import {
   useSensors,
   PointerSensor,
   DragStartEvent,
+  DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -20,6 +21,7 @@ import useGameState from "../hooks/useGameState";
 import { useKeyboardNavigation } from "../hooks/useKeyboardNavigation";
 import type { Block } from "./BlockList";
 import ReactMarkdown from "react-markdown";
+import { useState } from "react";
 
 interface GameProps {
   availableBlocks: Block[];
@@ -27,23 +29,36 @@ interface GameProps {
   hint: string;
 }
 
-const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
+const Game = ({
+  availableBlocks: initialBlocks,
+  maxBlocks,
+  hint,
+}: GameProps) => {
   const {
     workspace,
     selectedBlockId,
     isCompiling,
     errors,
-    availableBlocks: filteredBlocks,
+    availableBlocks,
+    currentBlocksCount,
     actions,
-  } = useGameState({ availableBlocks, maxBlocks });
+  } = useGameState({ initialAvailableBlocks: initialBlocks, maxBlocks, hint });
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeDroppableId, setActiveDroppableId] = useState<string | null>(
+    null
+  );
 
   const { activeColumn, setActiveColumn, indices } = useKeyboardNavigation({
-    availableBlocks: filteredBlocks,
-    workspace,
-    onBlockSelect: actions.selectBlock,
-    onWorkspaceChange: (blocks) => {
-      workspace.forEach((block) => actions.removeBlock(block.id));
-      blocks.forEach((block) => actions.addBlock(block));
+    availableBlocks: availableBlocks,
+    workspace: workspace.filter(Boolean) as Block[],
+    onBlockSelect: (block) => actions.selectBlock(block.id),
+    onWorkspaceChange: (newBlocks) => {
+      const newSparseWorkspace = new Array(maxBlocks).fill(null);
+      newBlocks.forEach((b, i) => {
+        if (i < maxBlocks) newSparseWorkspace[i] = b;
+      });
+      actions.setWorkspace(newSparseWorkspace);
     },
     onCompile: actions.compile,
   });
@@ -58,36 +73,79 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    console.log("Drag started:", active.id);
+    setActiveId(active.id as string);
+    actions.selectBlock(active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    if (!over) {
+      setActiveDroppableId(null);
+      return;
+    }
+    if (over.id.toString().startsWith("placeholder-")) {
+      setActiveDroppableId(over.id as string);
+    } else {
+      setActiveDroppableId(null);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over) return;
+    setActiveId(null);
+    setActiveDroppableId(null);
 
-    const sourceBlock = [...filteredBlocks, ...workspace].find(
-      (block) => block.id === active.id
+    if (!over || !active) return;
+
+    const draggedBlock = [
+      ...initialBlocks,
+      ...(workspace.filter(Boolean) as Block[]),
+    ].find((b) => b.id === active.id);
+
+    if (!draggedBlock) return;
+
+    const newWorkspace = [...workspace];
+
+    const currentIndexInWorkspace = workspace.findIndex(
+      (b) => b?.id === active.id
     );
-    if (!sourceBlock) return;
+    if (currentIndexInWorkspace !== -1) {
+      newWorkspace[currentIndexInWorkspace] = null;
+    }
 
-    // Jeśli przeciągamy do workspace (prawa kolumna)
-    if (
-      over.id === "workspace" ||
-      over.data?.current?.sortable?.containerId === "workspace"
+    if (over.id === "available") {
+      // Block dragged back to available list.
+      // Its removal from newWorkspace (by setting its slot to null earlier)
+      // and the subsequent call to actions.setWorkspace(newWorkspace)
+      // will make useGameState update the availableBlocks list correctly.
+      // No explicit action needed here beyond what actions.setWorkspace does.
+    } else if (over.id.toString().startsWith("placeholder-")) {
+      const targetIndex = parseInt(over.id.toString().split("-")[1]);
+
+      if (
+        newWorkspace[targetIndex] &&
+        newWorkspace[targetIndex]!.id !== active.id
+      ) {
+        newWorkspace[targetIndex] = null;
+      }
+      newWorkspace[targetIndex] = draggedBlock;
+    } else if (
+      over.id === "workspace" &&
+      workspace.filter(Boolean).length < maxBlocks
     ) {
-      if (filteredBlocks.find((b) => b.id === active.id)) {
-        actions.addBlock(sourceBlock);
+      const firstEmptyIndex = newWorkspace.findIndex((slot) => slot === null);
+      if (firstEmptyIndex !== -1) {
+        newWorkspace[firstEmptyIndex] = draggedBlock;
       }
     }
-    // Jeśli przeciągamy do available (lewa kolumna)
-    else if (
-      over.id === "available" ||
-      over.data?.current?.sortable?.containerId === "available"
-    ) {
-      if (workspace.find((b) => b.id === active.id)) {
-        actions.removeBlock(sourceBlock.id);
-      }
-    }
+    actions.setWorkspace(newWorkspace);
+  };
+
+  const getActiveBlock = () => {
+    if (!activeId) return null;
+    return [...initialBlocks, ...(workspace.filter(Boolean) as Block[])].find(
+      (block) => block.id === activeId
+    );
   };
 
   return (
@@ -97,7 +155,7 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
           levelInfo={{
             title: "Face Recognition Pipeline",
             requiredBlocks: maxBlocks,
-            currentBlocks: workspace.length,
+            currentBlocks: currentBlocksCount,
           }}
         />
 
@@ -105,37 +163,38 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
           <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <div
               id="available"
               data-droppable="available"
-              className={`
-                bg-black/20 rounded-lg transition-colors
-                ${
-                  activeColumn === "blocks"
-                    ? "column-active"
-                    : "column-inactive"
-                }
-                relative
-              `}
+              className={`bg-black/20 rounded-lg transition-colors ${
+                activeColumn === "blocks" ? "column-active" : "column-inactive"
+              } relative`}
               onMouseEnter={() => setActiveColumn("blocks")}
             >
               <SortableContext
-                id="available"
-                items={filteredBlocks}
+                id="available-sortable"
+                items={availableBlocks.map((block) => block.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <BlockList
-                  blocks={filteredBlocks}
+                  blocks={availableBlocks}
                   selectedBlockId={
                     activeColumn === "blocks" ? selectedBlockId : null
                   }
                   selectedIndex={indices.blocks}
-                  onBlockSelect={actions.selectBlock}
-                  onBlockMove={(block) => {
-                    if (!workspace.find((b) => b.id === block.id)) {
-                      actions.addBlock(block);
+                  onBlockSelect={(block) => actions.selectBlock(block.id)}
+                  onBlockMove={(blockMoved) => {
+                    const newWs = [...workspace];
+                    const firstEmptyIdx = newWs.findIndex((b) => b === null);
+                    if (
+                      firstEmptyIdx !== -1 &&
+                      newWs.filter(Boolean).length < maxBlocks
+                    ) {
+                      newWs[firstEmptyIdx] = blockMoved;
+                      actions.setWorkspace(newWs);
                     }
                   }}
                 />
@@ -145,44 +204,25 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
             <div
               id="workspace"
               data-droppable="workspace"
-              className={`
-                bg-black/20 rounded-lg transition-colors
-                ${
-                  activeColumn === "workspace"
-                    ? "column-active"
-                    : "column-inactive"
-                }
-                relative
-              `}
+              className={`bg-black/20 rounded-lg transition-colors ${
+                activeColumn === "workspace"
+                  ? "column-active"
+                  : "column-inactive"
+              } relative`}
               onMouseEnter={() => setActiveColumn("workspace")}
             >
-              <SortableContext
-                id="workspace"
-                items={workspace}
-                strategy={verticalListSortingStrategy}
-              >
-                <WorkspaceArea
-                  workspace={workspace}
-                  onWorkspaceChange={(blocks) => {
-                    workspace.forEach((block) => actions.removeBlock(block.id));
-                    blocks.forEach((block) => actions.addBlock(block));
-                  }}
-                  maxBlocks={maxBlocks}
-                  selectedBlockId={
-                    activeColumn === "workspace" ? selectedBlockId : null
-                  }
-                  selectedIndex={indices.workspace}
-                />
-              </SortableContext>
+              <WorkspaceArea
+                workspace={workspace}
+                maxBlocks={maxBlocks}
+                selectedBlockId={
+                  activeColumn === "workspace" ? selectedBlockId : null
+                }
+                activeDroppableId={activeDroppableId}
+                onSelectBlock={actions.selectBlock}
+              />
             </div>
 
-            <div
-              className={`
-                bg-black/20 rounded-lg transition-colors
-                ${activeColumn === "info" ? "column-active" : "column-inactive"}
-              `}
-              onMouseEnter={() => setActiveColumn("info")}
-            >
+            <div className="bg-black/20 rounded-lg transition-colors pointer-events-none">
               <div className="p-4">
                 <div className="prose prose-invert prose-sm max-w-none">
                   <ReactMarkdown>{hint}</ReactMarkdown>
@@ -191,7 +231,13 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
             </div>
 
             <DragOverlay>
-              {/* Możemy tutaj dodać komponent pokazujący przeciągany element */}
+              {activeId ? (
+                <div className="p-3 rounded cursor-move bg-green-500/20 border border-green-500/30">
+                  <div className="font-mono terminal-text">
+                    {getActiveBlock()?.name}
+                  </div>
+                </div>
+              ) : null}
             </DragOverlay>
           </DndContext>
         </div>
@@ -199,22 +245,19 @@ const Game = ({ availableBlocks, maxBlocks, hint }: GameProps) => {
         <div className="flex flex-col gap-4">
           <button
             onClick={actions.compile}
-            disabled={workspace.length !== maxBlocks || isCompiling}
-            className={`
-              w-full py-3 rounded font-mono text-lg transition-colors
-              ${
-                workspace.length !== maxBlocks || isCompiling
-                  ? "block-base cursor-not-allowed text-opacity-50"
-                  : "block-highlighted hover:block-selected"
-              }
-            `}
+            disabled={currentBlocksCount !== maxBlocks || isCompiling}
+            className={`w-full py-3 rounded font-mono text-lg transition-colors ${
+              currentBlocksCount !== maxBlocks || isCompiling
+                ? "block-base cursor-not-allowed text-opacity-50"
+                : "block-highlighted hover:block-selected"
+            }`}
           >
             {isCompiling
               ? "Compiling..."
-              : workspace.length === maxBlocks
+              : currentBlocksCount === maxBlocks
               ? "Compile"
-              : `Need ${maxBlocks - workspace.length} more block${
-                  maxBlocks - workspace.length !== 1 ? "s" : ""
+              : `Need ${maxBlocks - currentBlocksCount} more block${
+                  maxBlocks - currentBlocksCount !== 1 ? "s" : ""
                 }`}
           </button>
 
