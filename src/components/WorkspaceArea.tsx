@@ -1,5 +1,6 @@
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { useState } from "react";
 import type { Block } from "./BlockList"; // Assuming BlockList exports BlockItemProps or similar
 
 // Re-define BlockItem or import if BlockList exports it and its props
@@ -7,13 +8,16 @@ import type { Block } from "./BlockList"; // Assuming BlockList exports BlockIte
 interface WorkspaceBlockItemProps {
   block: Block;
   isSelected: boolean;
-  onSelect: (blockId: string) => void;
-  // isCurrentlyDragging is now managed internally by useDraggable
+  isKeyboardHighlighted: boolean;
+  isKeyboardModeActive: boolean;
+  onSelect: (blockId: string | null) => void;
 }
 
 const WorkspaceBlockItem = ({
   block,
   isSelected,
+  isKeyboardHighlighted,
+  isKeyboardModeActive,
   onSelect,
 }: WorkspaceBlockItemProps) => {
   const {
@@ -21,15 +25,21 @@ const WorkspaceBlockItem = ({
     listeners,
     setNodeRef: draggableRef,
     transform,
-    isDragging, // isDragging state from useDraggable
+    isDragging,
   } = useDraggable({
     id: block.id,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    // transition can be added here if needed, or handled globally
   };
+
+  let blockClass = "block-base";
+  if (isKeyboardHighlighted) {
+    blockClass = "block-selected";
+  } else if (isSelected) {
+    blockClass = "block-selected";
+  }
 
   return (
     <div
@@ -38,7 +48,7 @@ const WorkspaceBlockItem = ({
       className={`
         p-3 rounded cursor-move transition-all relative
         ${isDragging ? "opacity-50 z-50 shadow-lg" : "opacity-100"}
-        ${isSelected ? "block-selected" : "block-base"}
+        ${blockClass}
       `}
       onClick={() => onSelect(block.id)}
       onKeyDown={(e) => {
@@ -47,7 +57,7 @@ const WorkspaceBlockItem = ({
           onSelect(block.id);
         }
       }}
-      aria-selected={isSelected}
+      aria-selected={isSelected || isKeyboardHighlighted}
       {...attributes}
       {...listeners}
     >
@@ -60,6 +70,9 @@ interface WorkspaceAreaProps {
   workspace: (Block | null)[];
   maxBlocks: number;
   selectedBlockId: string | null;
+  selectedIndex: number;
+  isKeyboardModeActive: boolean;
+  activeColumn: string;
   activeDroppableId: string | null;
   onSelectBlock: (blockId: string | null) => void;
 }
@@ -91,6 +104,9 @@ const WorkspaceArea = ({
   workspace,
   maxBlocks,
   selectedBlockId,
+  selectedIndex,
+  isKeyboardModeActive,
+  activeColumn,
   activeDroppableId,
   onSelectBlock,
 }: WorkspaceAreaProps) => {
@@ -105,11 +121,19 @@ const WorkspaceArea = ({
           {Array.from({ length: maxBlocks }).map((_, index) => {
             const blockInSlot = workspace[index];
             if (blockInSlot) {
+              const isCurrentBlockSelected = blockInSlot.id === selectedBlockId;
+              const isCurrentBlockKeyboardHighlighted =
+                activeColumn === "workspace" &&
+                isKeyboardModeActive &&
+                index === selectedIndex;
+
               return (
                 <WorkspaceBlockItem
                   key={blockInSlot.id}
                   block={blockInSlot}
-                  isSelected={blockInSlot.id === selectedBlockId}
+                  isSelected={isCurrentBlockSelected}
+                  isKeyboardHighlighted={isCurrentBlockKeyboardHighlighted}
+                  isKeyboardModeActive={isKeyboardModeActive}
                   onSelect={onSelectBlock}
                 />
               );

@@ -335,8 +335,13 @@ const Game = ({
                 workspace={workspace}
                 maxBlocks={maxBlocks}
                 selectedBlockId={selectedBlockId}
+                selectedIndex={
+                  activeColumn === "workspace" ? indices.workspace : -1
+                }
+                isKeyboardModeActive={isKeyboardModeActive}
+                activeColumn={activeColumn}
                 activeDroppableId={activeDroppableId}
-                onSelectBlock={actions.selectBlock}
+                onSelectBlock={(blockId) => actions.selectBlock(blockId)}
               />
             </div>
 

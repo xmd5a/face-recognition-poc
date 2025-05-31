@@ -34,41 +34,60 @@ export const useKeyboardNavigation = ({
   const blockSelectionTriggeredByHook = useRef(false);
 
   useEffect(() => {
-    const list = activeColumn === "blocks" ? availableBlocks : workspace;
-    let targetIndex = indices[activeColumn];
-
-    const currentBlockInThisColumnIsSelected = list.find(
-      (b) => b.id === selectedBlockId
-    );
-
     if (blockSelectionTriggeredByHook.current) {
       blockSelectionTriggeredByHook.current = false;
-      // If selection was just made by this hook, ensure indices are synced if needed
-      // but don't re-trigger onBlockSelect unless absolutely necessary.
-      const selectedIdx = list.findIndex((b) => b.id === selectedBlockId);
+      // If selection was made by this hook, ensure indices are synced if needed
+      const listForSync =
+        activeColumn === "blocks" ? availableBlocks : workspace;
+      const selectedIdx = listForSync.findIndex(
+        (b) => b.id === selectedBlockId
+      );
       if (selectedIdx !== -1 && indices[activeColumn] !== selectedIdx) {
         setIndices((prev) => ({ ...prev, [activeColumn]: selectedIdx }));
       }
       return;
     }
 
-    if (currentBlockInThisColumnIsSelected) {
-      const selectedIdx = list.findIndex((b) => b.id === selectedBlockId);
-      if (selectedIdx !== -1 && indices[activeColumn] !== selectedIdx) {
-        setIndices((prev) => ({ ...prev, [activeColumn]: selectedIdx }));
+    const currentList = activeColumn === "blocks" ? availableBlocks : workspace;
+    let newIndexToSelect = indices[activeColumn]; // Start with the last known index for this column
+
+    // Is the globally selected block currently in our active list?
+    const वैश्विकSelectedBlock = currentList.find(
+      (b) => b.id === selectedBlockId
+    );
+
+    if (वैश्विकSelectedBlock) {
+      // A block in the current active column is ALREADY globally selected.
+      // We just need to make sure our internal `indices` for this column are synced with it.
+      const idxOfGlobalSelection = currentList.findIndex(
+        (b) => b.id === selectedBlockId
+      );
+      if (
+        idxOfGlobalSelection !== -1 &&
+        indices[activeColumn] !== idxOfGlobalSelection
+      ) {
+        setIndices((prev) => ({
+          ...prev,
+          [activeColumn]: idxOfGlobalSelection,
+        }));
       }
+      // No need to call onBlockSelect, it's already selected.
     } else {
-      if (list.length > 0) {
-        if (targetIndex >= list.length || targetIndex < 0) {
-          targetIndex = 0;
+      // No block in the current active column is globally selected.
+      // This means we NEED to select a block in this column (or deselect all if empty).
+      if (currentList.length > 0) {
+        // There are blocks in this column to select from.
+        // Validate newIndexToSelect (which is indices[activeColumn])
+        if (newIndexToSelect >= currentList.length || newIndexToSelect < 0) {
+          newIndexToSelect = 0; // Default to first block if saved index is invalid
         }
-        setIndices((prev) => ({ ...prev, [activeColumn]: targetIndex }));
+        setIndices((prev) => ({ ...prev, [activeColumn]: newIndexToSelect }));
         blockSelectionTriggeredByHook.current = true;
-        onBlockSelect(list[targetIndex]);
+        onBlockSelect(currentList[newIndexToSelect]);
       } else {
-        setIndices((prev) => ({ ...prev, [activeColumn]: 0 }));
+        // Current column is empty, deselect if anything was selected.
+        setIndices((prev) => ({ ...prev, [activeColumn]: 0 })); // Reset index for this empty column
         if (selectedBlockId !== null) {
-          // Only call if there's something to deselect
           blockSelectionTriggeredByHook.current = true;
           onBlockSelect(null);
         }
@@ -81,7 +100,7 @@ export const useKeyboardNavigation = ({
     selectedBlockId,
     onBlockSelect,
     indices,
-  ]); // Added indices back for now
+  ]);
 
   useEffect(() => {
     const down = () => setKeyboardNavJustActivated(true);
@@ -95,12 +114,11 @@ export const useKeyboardNavigation = ({
         activeColumn === "blocks" ? availableBlocks : workspace;
       let currentIndexInList = indices[activeColumn];
 
-      // Ensure currentIndex is valid for the currentList
       if (currentIndexInList >= currentList.length && currentList.length > 0) {
         currentIndexInList = currentList.length - 1;
       }
       if (currentList.length === 0) {
-        currentIndexInList = 0; // Default to 0 if list is empty
+        currentIndexInList = 0;
       }
 
       if (keyboardNavJustActivated && selectedBlockId) {
@@ -136,11 +154,6 @@ export const useKeyboardNavigation = ({
         case "ArrowLeft":
           event.preventDefault();
           if (activeColumn === "workspace") {
-            // Optional: Deselect block in workspace column if one is selected
-            // if (selectedBlockId && workspace.find(b => b.id === selectedBlockId)) {
-            //   blockSelectionTriggeredByHook.current = true;
-            //   onBlockSelect(null);
-            // }
             setActiveColumn("blocks");
           }
           break;
@@ -148,8 +161,6 @@ export const useKeyboardNavigation = ({
         case "ArrowRight":
           event.preventDefault();
           if (activeColumn === "blocks") {
-            // Optional: Deselect block in availableBlocks column if one is selected
-            // This should ideally be handled by the Game.tsx useEffect for activeColumn change
             setActiveColumn("workspace");
           }
           break;
