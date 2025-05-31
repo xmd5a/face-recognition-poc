@@ -218,6 +218,12 @@ body {
   font-weight: 500;
 }
 
+.block-marked-for-move {
+  border: 2px dashed rgba(0, 255, 0, 0.7);
+  background-color: rgba(0, 255, 0, 0.15);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
 /* Column styles */
 .column-active {
   position: relative;

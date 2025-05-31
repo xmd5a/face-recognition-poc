@@ -18,7 +18,10 @@ import BlockList from "./BlockList";
 import WorkspaceArea from "./WorkspaceArea";
 import Terminal from "./Terminal";
 import useGameState from "../hooks/useGameState";
-import { useKeyboardNavigation } from "../hooks/useKeyboardNavigation";
+import {
+  useKeyboardNavigation,
+  type Column,
+} from "../hooks/useKeyboardNavigation";
 import type { Block } from "./BlockList";
 import ReactMarkdown from "react-markdown";
 import { useState, useEffect, useRef } from "react";
@@ -27,6 +30,21 @@ interface GameProps {
   availableBlocks: Block[];
   maxBlocks: number;
   hint: string;
+}
+
+// Type definitions moved here for clarity, ensure Column is imported or defined
+export interface BlockToMoveInfo {
+  id: string;
+  sourceColumn: Column;
+  sourceData: Block;
+  sourceIndex: number;
+}
+
+export interface GhostTargetInfo {
+  targetColumn: Column;
+  targetIndex: number;
+  isTargetPlaceholder: boolean;
+  targetBlockId?: string | null;
 }
 
 const Game = ({
@@ -50,6 +68,10 @@ const Game = ({
   );
   const [isMouseCursorVisible, setIsMouseCursorVisible] = useState(true);
   const prevIsMouseCursorVisibleRef = useRef<boolean>(true);
+  const [blockToMoveInfo, setBlockToMoveInfo] =
+    useState<BlockToMoveInfo | null>(null);
+  const [ghostTargetInfo, setGhostTargetInfo] =
+    useState<GhostTargetInfo | null>(null);
 
   const { activeColumn, setActiveColumn, indices } = useKeyboardNavigation({
     availableBlocks: availableBlocks,
@@ -64,6 +86,11 @@ const Game = ({
       actions.setWorkspace(newSparseWorkspace);
     },
     onCompile: actions.compile,
+    blockToMoveInfo,
+    setBlockToMoveInfo,
+    ghostTargetInfo,
+    setGhostTargetInfo,
+    maxBlocks,
   });
 
   // Effect to handle active column changes
@@ -317,6 +344,8 @@ const Game = ({
                   }}
                   isKeyboardModeActive={isKeyboardModeActive}
                   activeColumn={activeColumn}
+                  blockToMoveInfo={blockToMoveInfo}
+                  ghostTargetInfo={ghostTargetInfo}
                 />
               </SortableContext>
             </div>
@@ -342,6 +371,8 @@ const Game = ({
                 activeColumn={activeColumn}
                 activeDroppableId={activeDroppableId}
                 onSelectBlock={(blockId) => actions.selectBlock(blockId)}
+                blockToMoveInfo={blockToMoveInfo}
+                ghostTargetInfo={ghostTargetInfo}
               />
             </div>
 

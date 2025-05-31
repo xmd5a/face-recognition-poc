@@ -1,8 +1,12 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
+// Removed: import type { Block } from "./BlockList";
+// Assuming BlockToMoveInfo and GhostTargetInfo types are available globally or imported
+import type { BlockToMoveInfo, GhostTargetInfo } from "./Game";
 
 export interface Block {
+  // This is the local declaration
   id: string;
   name: string;
   description: string;
@@ -15,6 +19,7 @@ interface BlockItemProps {
   isKeyboardHighlighted: boolean;
   isMouseHovered: boolean;
   isKeyboardModeActive: boolean;
+  isMarkedForMove: boolean;
   onSelect: (block: Block) => void;
   onDoubleClick?: (block: Block) => void;
 }
@@ -25,6 +30,7 @@ const BlockItem = ({
   isKeyboardHighlighted,
   isMouseHovered,
   isKeyboardModeActive,
+  isMarkedForMove,
   onSelect,
   onDoubleClick,
 }: BlockItemProps) => {
@@ -43,12 +49,12 @@ const BlockItem = ({
   };
 
   let blockClass = "block-base";
-  if (isKeyboardHighlighted) {
+  if (isMarkedForMove) {
+    blockClass = "block-marked-for-move";
+  } else if (isKeyboardHighlighted) {
     blockClass = "block-selected";
-  } else if (!isKeyboardModeActive) {
-    if (isSelected || isMouseHovered) {
-      blockClass = "block-selected";
-    }
+  } else if (!isKeyboardModeActive && (isSelected || isMouseHovered)) {
+    blockClass = "block-selected";
   }
 
   return (
@@ -68,7 +74,7 @@ const BlockItem = ({
           onSelect(block);
         }
       }}
-      aria-selected={isSelected}
+      aria-selected={isSelected || isKeyboardHighlighted}
       {...attributes}
       {...listeners}
     >
@@ -83,7 +89,6 @@ interface BlockDescriptionProps {
 
 const BlockDescription = ({ block }: BlockDescriptionProps) => {
   if (!block) return null;
-
   return (
     <div className="block-description relative mt-auto">
       <div className="p-6 font-mono">
@@ -94,7 +99,7 @@ const BlockDescription = ({ block }: BlockDescriptionProps) => {
           </span>
           <span className="text-terminal-green/30 animate-pulse">_</span>
         </div>
-        <div className="pl-6 text-terminal-green/70 text-base leading-relaxed">
+        <div className="text-terminal-green/70 text-base leading-relaxed">
           <span className="text-terminal-green/50">&gt;</span>{" "}
           {block.description}
         </div>
@@ -111,6 +116,8 @@ interface BlockListProps {
   onBlockMove?: (block: Block) => void;
   isKeyboardModeActive: boolean;
   activeColumn: string;
+  blockToMoveInfo: BlockToMoveInfo | null;
+  ghostTargetInfo: GhostTargetInfo | null;
 }
 
 const BlockList = ({
@@ -121,13 +128,20 @@ const BlockList = ({
   onBlockMove,
   isKeyboardModeActive,
   activeColumn,
+  blockToMoveInfo, // Now used
+  ghostTargetInfo, // Now used
 }: BlockListProps) => {
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
 
-  const selectedBlock =
+  const selectedBlockDetails =
     blocks.find((block) => block.id === selectedBlockId) || null;
+  const hoveredBlockDetails =
+    blocks.find((b) => b.id === hoveredBlockId) || null;
 
-  const hoveredBlock = blocks.find((b) => b.id === hoveredBlockId) || null;
+  const blockMarkedForMoveInThisColumn =
+    blockToMoveInfo && blockToMoveInfo.sourceColumn === "blocks"
+      ? blockToMoveInfo.sourceData
+      : null;
 
   const handleBlockMove = (block: Block) => {
     if (onBlockMove) {
@@ -140,9 +154,11 @@ const BlockList = ({
     }
   };
 
-  const displayedBlock = isKeyboardModeActive
-    ? selectedBlock
-    : hoveredBlock || selectedBlock;
+  const displayedBlockForDescription =
+    blockMarkedForMoveInThisColumn ||
+    (isKeyboardModeActive
+      ? selectedBlockDetails
+      : hoveredBlockDetails || selectedBlockDetails);
 
   return (
     <div className="h-full flex flex-col">
@@ -154,39 +170,69 @@ const BlockList = ({
           }
         }}
       >
-        {blocks.map((block, index) => (
-          <div
-            key={block.id}
-            onMouseEnter={() => {
-              if (!isKeyboardModeActive) {
-                setHoveredBlockId(block.id);
-                onBlockSelect(block);
-              }
-            }}
-          >
-            <BlockItem
-              block={block}
-              isSelected={
-                activeColumn === "blocks" && block.id === selectedBlockId
-              }
-              isKeyboardHighlighted={
-                activeColumn === "blocks" &&
-                isKeyboardModeActive &&
-                index === selectedIndex
-              }
-              isMouseHovered={
-                activeColumn === "blocks" &&
-                !isKeyboardModeActive &&
-                hoveredBlockId === block.id
-              }
-              isKeyboardModeActive={isKeyboardModeActive}
-              onSelect={onBlockSelect}
-              onDoubleClick={handleBlockMove}
-            />
-          </div>
-        ))}
+        {blocks.map((block, index) => {
+          const isSelected =
+            activeColumn === "blocks" &&
+            block.id === selectedBlockId &&
+            !blockToMoveInfo; // Don't show as normally selected if a move is active
+          const isKeyboardHighlighted =
+            activeColumn === "blocks" &&
+            isKeyboardModeActive &&
+            index === selectedIndex &&
+            !blockToMoveInfo;
+          const isMouseHovered =
+            !isKeyboardModeActive &&
+            hoveredBlockId === block.id &&
+            activeColumn === "blocks" &&
+            !blockToMoveInfo;
+
+          // A block is marked for move if it's the source block of an active move operation and we are in its original column.
+          const isMarked =
+            blockToMoveInfo?.id === block.id &&
+            blockToMoveInfo?.sourceColumn === "blocks";
+
+          // A ghost of blockToMoveInfo.sourceData should appear over this item if this item is the ghostTarget
+          const isGhostTargetHere =
+            ghostTargetInfo?.targetColumn === "blocks" &&
+            ghostTargetInfo?.targetIndex === index &&
+            !ghostTargetInfo?.isTargetPlaceholder; // In BlockList, target is always an existing block for swap
+
+          return (
+            <div
+              key={block.id}
+              className="relative" // Added relative for positioning ghost
+              onMouseEnter={() => {
+                if (!isKeyboardModeActive && activeColumn === "blocks") {
+                  setHoveredBlockId(block.id);
+                  if (!blockToMoveInfo) onBlockSelect(block);
+                }
+              }}
+            >
+              {isGhostTargetHere && blockToMoveInfo && (
+                <div
+                  className="absolute inset-0 m-1 p-3 rounded border-2 border-dashed border-yellow-400/70 bg-yellow-500/10 z-20 flex items-center justify-center pointer-events-none"
+                  // Style for ghost block preview
+                >
+                  <div className="font-mono terminal-text opacity-70">
+                    {blockToMoveInfo.sourceData.name}
+                  </div>
+                </div>
+              )}
+              <BlockItem
+                block={block}
+                isSelected={isSelected && !isMarked} // Don't apply .block-selected if it's marked for move
+                isKeyboardHighlighted={isKeyboardHighlighted && !isMarked}
+                isMouseHovered={isMouseHovered && !isMarked}
+                isKeyboardModeActive={isKeyboardModeActive}
+                isMarkedForMove={isMarked}
+                onSelect={onBlockSelect}
+                onDoubleClick={handleBlockMove}
+              />
+            </div>
+          );
+        })}
       </div>
-      <BlockDescription block={displayedBlock} />
+      <BlockDescription block={displayedBlockForDescription} />
     </div>
   );
 };
