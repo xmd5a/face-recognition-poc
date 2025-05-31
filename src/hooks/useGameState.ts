@@ -92,19 +92,16 @@ const useGameState = ({
           ...prev,
           isCompiling: false,
           errors: [
-            `Błąd: Oczekiwano ${solution.length} bloków, otrzymano ${playerSolutionIds.length}.`,
+            `Oczekiwano ${solution.length} bloków, otrzymano ${playerSolutionIds.length}.`,
             `Upewnij się, że wszystkie wymagane sloty w Workspace są zapełnione.`,
           ],
         }));
         return;
       }
 
-      let errorCount = 0;
-      for (let i = 0; i < solution.length; i++) {
-        if (playerSolutionIds[i] !== solution[i]) {
-          errorCount++;
-        }
-      }
+      const errorCount = playerSolutionIds.reduce((count, id, index) => {
+        return id !== solution[index] ? count + 1 : count;
+      }, 0);
 
       if (errorCount === 0) {
         setGameState((prev) => ({
@@ -113,13 +110,16 @@ const useGameState = ({
           errors: [],
         }));
       } else {
+        const genericErrorMessages = new Array(errorCount).fill(
+          "An error occurred"
+        );
         setGameState((prev) => ({
           ...prev,
           isCompiling: false,
-          errors: [`${errorCount} błędów, sprawdź swój kod`],
+          errors: genericErrorMessages,
         }));
       }
-    }, 1500);
+    }, 5000);
   }, [gameState.workspace, solution, maxBlocks]);
 
   const reset = useCallback(() => {
