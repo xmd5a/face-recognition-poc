@@ -14,12 +14,14 @@ interface UseGameStateProps {
   initialAvailableBlocks: Block[];
   maxBlocks: number;
   hint?: string;
+  solution: string[];
 }
 
 const useGameState = ({
   initialAvailableBlocks,
   maxBlocks,
   hint = "",
+  solution,
 }: UseGameStateProps) => {
   const [gameState, setGameState] = useState<GameState>(() => ({
     workspace: new Array(maxBlocks).fill(null),
@@ -78,27 +80,47 @@ const useGameState = ({
 
   const compile = useCallback(() => {
     setGameState((prev) => ({ ...prev, isCompiling: true, errors: [] }));
+
     setTimeout(() => {
-      const commands = gameState.workspace
-        .filter(Boolean)
-        .map((block) => block!.command);
-      if (commands.length !== maxBlocks) {
+      const playerWorkspaceBlocks = gameState.workspace.filter(
+        Boolean
+      ) as Block[];
+      const playerSolutionIds = playerWorkspaceBlocks.map((block) => block.id);
+
+      if (playerSolutionIds.length !== solution.length) {
         setGameState((prev) => ({
           ...prev,
           isCompiling: false,
           errors: [
-            `Error: Expected ${maxBlocks} blocks, got ${commands.length}.`,
+            `Błąd: Oczekiwano ${solution.length} bloków, otrzymano ${playerSolutionIds.length}.`,
+            `Upewnij się, że wszystkie wymagane sloty w Workspace są zapełnione.`,
           ],
         }));
         return;
       }
-      setGameState((prev) => ({
-        ...prev,
-        isCompiling: false,
-        errors: ["Compilation successful! All systems nominal."],
-      }));
+
+      let errorCount = 0;
+      for (let i = 0; i < solution.length; i++) {
+        if (playerSolutionIds[i] !== solution[i]) {
+          errorCount++;
+        }
+      }
+
+      if (errorCount === 0) {
+        setGameState((prev) => ({
+          ...prev,
+          isCompiling: false,
+          errors: ["0 błędów, przystępuję do kompilacji"],
+        }));
+      } else {
+        setGameState((prev) => ({
+          ...prev,
+          isCompiling: false,
+          errors: [`${errorCount} błędów, sprawdź swój kod`],
+        }));
+      }
     }, 1500);
-  }, [gameState.workspace, maxBlocks]);
+  }, [gameState.workspace, solution, maxBlocks]);
 
   const reset = useCallback(() => {
     setGameState({
@@ -111,7 +133,7 @@ const useGameState = ({
       ),
       levelHint: hint,
     });
-  }, [initialAvailableBlocks, maxBlocks, hint]);
+  }, [initialAvailableBlocks, maxBlocks, hint, solution]);
 
   return {
     ...gameState,

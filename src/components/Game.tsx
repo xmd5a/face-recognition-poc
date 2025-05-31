@@ -30,6 +30,7 @@ interface GameProps {
   availableBlocks: Block[];
   maxBlocks: number;
   hint: string;
+  solution: string[];
 }
 
 // Type definitions moved here for clarity, ensure Column is imported or defined
@@ -51,6 +52,7 @@ const Game = ({
   availableBlocks: initialBlocks,
   maxBlocks,
   hint,
+  solution,
 }: GameProps) => {
   const {
     workspace,
@@ -60,11 +62,16 @@ const Game = ({
     availableBlockSlots,
     currentBlocksCount,
     actions,
-  } = useGameState({ initialAvailableBlocks: initialBlocks, maxBlocks, hint });
+  } = useGameState({
+    initialAvailableBlocks: initialBlocks,
+    maxBlocks,
+    hint,
+    solution,
+  });
 
   // Logowanie początkowej konfiguracji bloków
   useEffect(() => {
-    console.log("Initial Game State - Correct Block Order:");
+    console.log("Initial Game State - Correct Block Order & Solution:");
 
     const availableBlockIds = availableBlockSlots
       .map((block, index) =>
@@ -91,6 +98,24 @@ const Game = ({
       "Workspace Blocks (src/hooks/useGameState -> initialWorkspace):"
     );
     console.log(workspace.length > 0 ? `  ${workspaceBlockIds}` : "  (empty)");
+
+    // Log the solution
+    console.log("Expected Solution (Block IDs in order):");
+    if (solution && solution.length > 0) {
+      const solutionBlockDetails = solution
+        .map((id, index) => {
+          const blockInAvailable = initialBlocks.find((b) => b.id === id);
+          return `  Step ${index}: ${id}${
+            blockInAvailable
+              ? ` (${blockInAvailable.name})`
+              : " (Name not found in initialBlocks)"
+          }`;
+        })
+        .join("\n  ");
+      console.log(solutionBlockDetails);
+    } else {
+      console.log("  (No solution provided or solution is empty)");
+    }
   }, []); // Pusta tablica zależności, aby uruchomić tylko raz po zamontowaniu
 
   const [activeId, setActiveId] = useState<string | null>(null);
