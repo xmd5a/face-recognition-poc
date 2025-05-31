@@ -214,7 +214,7 @@ const predefinedScenarios: ScenarioDetails[] = [
     availableBlockIds: ["1", "17", "2", "3", "9", "4", "5", "6", "8"], // 9 available
     solution: ["1", "17", "2", "3", "4", "5", "6"], // 7 required
     required: 7,
-    hint: `# Simple Face ID Check\nA streamlined process to quickly check a face:\n1. Load and validate the image.\n2. Standardize and detect the face.\n3. Extract key features.\n4. Compare and get identity.`,
+    hint: `Arrange the functions in the correct order to perform the code analysis, then click the 'compile' button.\n\n# Simple Face ID Check\nThis task involves processing an image to verify an identity. Consider the typical stages: initial input, preparation, core analysis, and final output.`,
   },
   {
     sid: "data_integrity_check",
@@ -222,7 +222,7 @@ const predefinedScenarios: ScenarioDetails[] = [
     availableBlockIds: ["11", "17", "24", "18", "7", "20"], // 6 available
     solution: ["11", "17", "24", "7"], // 4 required
     required: 4,
-    hint: `# Data Integrity Check\nVerify the integrity of fetched data:\n1. Fetch the data.\n2. Validate its format.\n3. Verify checksum.\n4. Log the result.`,
+    hint: `Arrange the functions in the correct order to perform the code analysis, then click the 'compile' button.\n\n# Data Integrity Check\nThe goal is to ensure the data is correct and valid. Think about the sequence of operations needed from obtaining data to confirming its state.`,
   },
   {
     sid: "standard_db_maintenance",
@@ -230,7 +230,7 @@ const predefinedScenarios: ScenarioDetails[] = [
     availableBlockIds: ["25", "15", "26", "27", "13", "7", "30", "29"],
     solution: ["25", "15", "26", "13", "7"],
     required: 5,
-    hint: `# Standard DB Maintenance\nPerform essential database maintenance:\n1. Parse configuration & Begin transaction.\n2. Initialize the database.\n3. Update records.\n4. Log results.\n*Consider permissions, indexing, or error handling for more complex scenarios.*`,
+    hint: `Arrange the functions in the correct order to perform the code analysis, then click the 'compile' button.\n\n# Standard DB Maintenance\nThis scenario focuses on common database operations. What are the fundamental steps before and after modifying database records?`,
   },
 ];
 
