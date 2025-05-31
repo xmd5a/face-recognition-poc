@@ -128,11 +128,42 @@ const Game = ({
       if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
         return;
       }
-      setIsMouseCursorVisible(false);
+      // Only hide cursor if not actively dragging with mouse (activeId from dnd-kit)
+      if (!activeId) {
+        setIsMouseCursorVisible(false);
+      }
     };
 
     const handleMouseMove = () => {
       setIsMouseCursorVisible(true);
+      // If in move mode (keyboard) and mouse moves, cancel move mode
+      if (blockToMoveInfo) {
+        const blockThatWasMoved = blockToMoveInfo.sourceData; // Store before resetting
+        const originalSourceColumn = blockToMoveInfo.sourceColumn;
+
+        setBlockToMoveInfo(null);
+        setGhostTargetInfo(null);
+        setActiveColumn("blocks"); // Switch focus to the left column
+
+        // Try to re-select the block that was being moved if it came from 'blocks'
+        // or select the current/first block in the 'blocks' column.
+        if (originalSourceColumn === "blocks" && blockThatWasMoved) {
+          actions.selectBlock(blockThatWasMoved.id);
+        } else {
+          // If came from workspace, or no specific block to select,
+          // let useKeyboardNavigation handle selection in 'blocks' column (e.g. first item or based on indices.blocks)
+          // To ensure this happens, we can select null first, then the hook will pick one if available
+          if (availableBlocks.length > 0) {
+            // Trigger a re-evaluation in useKeyboardNavigation which should select based on indices.blocks
+            // This is a bit indirect. A more direct way might be to call a function from useKeyboardNavigation
+            // that selects the current item in a given column based on its internal index.
+            // For now, selecting the first available block in 'blocks' is a safe bet.
+            actions.selectBlock(availableBlocks[0].id);
+          } else {
+            actions.selectBlock(null);
+          }
+        }
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
@@ -148,7 +179,15 @@ const Game = ({
       document.body.style.cursor = "auto";
       document.body.classList.remove("keyboard-mode-active");
     };
-  }, []);
+  }, [
+    activeId, // To prevent hiding cursor during dnd drag
+    blockToMoveInfo,
+    setBlockToMoveInfo,
+    setGhostTargetInfo,
+    setActiveColumn,
+    actions, // actions object itself is stable, but its contents are used
+    availableBlocks, // For re-selecting in availableBlocks
+  ]);
 
   useEffect(() => {
     const styleTagId = "custom-cursor-style";
