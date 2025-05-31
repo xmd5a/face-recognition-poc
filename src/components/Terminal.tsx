@@ -319,7 +319,7 @@ const Terminal = ({
             )}
           </div>
 
-          <div className="mt-auto pt-4 font-mono">
+          <div className="mt-auto pt-2 font-mono">
             <button
               onClick={onCompile}
               disabled={isButtonDisabled}

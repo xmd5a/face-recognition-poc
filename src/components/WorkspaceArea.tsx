@@ -5,19 +5,23 @@ import type { BlockToMoveInfo, GhostTargetInfo } from "./Game";
 
 interface WorkspaceBlockItemProps {
   block: Block;
+  slotIndex: number;
   isSelected: boolean;
   isKeyboardHighlighted: boolean;
   isMarkedForMove: boolean;
   isGhostDropTarget: boolean;
+  isDndDropTarget?: boolean;
   onSelect: (blockId: string | null) => void;
 }
 
 const WorkspaceBlockItem = ({
   block,
+  slotIndex,
   isSelected,
   isKeyboardHighlighted,
   isMarkedForMove,
   isGhostDropTarget,
+  isDndDropTarget,
   onSelect,
 }: WorkspaceBlockItemProps) => {
   const {
@@ -27,12 +31,26 @@ const WorkspaceBlockItem = ({
     transform,
     isDragging,
   } = useDraggable({
-    id: `workspace-block-${block.id}`,
+    id: `workspace-block-${block.id}-${slotIndex}`,
     data: {
       type: "workspace-block",
       block: block,
     },
   });
+
+  const { setNodeRef: droppableRef, isOver } = useDroppable({
+    id: `workspace-block-droptarget-${block.id}-${slotIndex}`,
+    data: {
+      type: "workspace-block-droppable",
+      blockId: block.id,
+      index: slotIndex,
+    },
+  });
+
+  const setCombinedNodeRef = (node: HTMLElement | null) => {
+    draggableRef(node);
+    droppableRef(node);
+  };
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -52,11 +70,16 @@ const WorkspaceBlockItem = ({
     ${isDragging ? "opacity-50 z-50 shadow-lg" : "opacity-100"}
     ${blockClass}
     ${isGhostDropTarget ? "ghost-drop-target" : ""}
+    ${
+      isDndDropTarget || (isOver && !isDragging)
+        ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-black/30"
+        : ""
+    }
   `;
 
   return (
     <div
-      ref={draggableRef}
+      ref={setCombinedNodeRef}
       style={style}
       className={combinedClasses.trim()}
       onClick={() => onSelect(block.id)}
@@ -209,10 +232,15 @@ const WorkspaceArea = ({
                   )}
                   <WorkspaceBlockItem
                     block={blockInSlot}
+                    slotIndex={slotIndex}
                     isSelected={isSelectedByGlobalId && !isMarked}
                     isKeyboardHighlighted={isHighlightedByKeyboard && !isMarked}
                     isMarkedForMove={isMarked}
                     isGhostDropTarget={isGhostTargetForBlockHere ?? false}
+                    isDndDropTarget={
+                      activeDroppableId ===
+                      `workspace-block-droptarget-${blockInSlot.id}-${slotIndex}`
+                    }
                     onSelect={onSelectBlock}
                   />
                 </div>

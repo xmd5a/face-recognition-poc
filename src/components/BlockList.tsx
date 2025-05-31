@@ -21,6 +21,7 @@ interface PlaceholderProps {
   // isActive: boolean; // Placeholder in BlockList might not need active drag-over state from dnd-kit like workspace
   isGhostDropTarget: boolean;
   ghostBlockData: Block | null;
+  isDndDropTarget?: boolean; // Added for DND drag over highlighting
 }
 
 const PlaceholderItem = ({
@@ -28,6 +29,7 @@ const PlaceholderItem = ({
   slotIndex,
   isGhostDropTarget,
   ghostBlockData,
+  isDndDropTarget, // Added
 }: PlaceholderProps) => {
   // Placeholders in BlockList are now droppable targets
   const { setNodeRef } = useDroppable({
@@ -47,7 +49,9 @@ const PlaceholderItem = ({
       className={`p-3 rounded transition-all relative border-2 border-dashed 
                   ${
                     isGhostDropTarget
-                      ? "ghost-drop-target"
+                      ? "ghost-drop-target" // Keyboard move targeting
+                      : isDndDropTarget
+                      ? "border-blue-500 bg-blue-500/10" // DND targeting
                       : "border-green-400/10"
                   }
                   h-[60px] flex items-center justify-center`} // Ensure consistent height
@@ -74,7 +78,8 @@ interface BlockItemProps {
   isMouseHovered: boolean;
   isKeyboardModeActive: boolean;
   isMarkedForMove: boolean;
-  isGhostDropTarget: boolean; // Added for styling if it's a block being targeted for a swap
+  isGhostDropTarget: boolean;
+  isDndDropTarget?: boolean; // Added for DND drag over highlighting
   onSelect: (block: Block) => void;
   onDoubleClick?: (block: Block) => void;
 }
@@ -86,7 +91,8 @@ const BlockItem = ({
   isMouseHovered,
   isKeyboardModeActive,
   isMarkedForMove,
-  isGhostDropTarget, // Added
+  isGhostDropTarget,
+  isDndDropTarget, // Added
   onSelect,
   onDoubleClick,
 }: BlockItemProps) => {
@@ -150,7 +156,13 @@ const BlockItem = ({
     p-3 rounded cursor-move transition-all relative
     ${isDragging ? "opacity-50 z-50 shadow-lg" : "opacity-100"}
     ${blockClass}
-    ${isGhostDropTarget ? "ghost-drop-target" : ""}
+    ${
+      isGhostDropTarget
+        ? "ghost-drop-target" // Keyboard move targeting
+        : isDndDropTarget
+        ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-black/30" // DND targeting
+        : ""
+    }
   `;
 
   return (
@@ -210,6 +222,7 @@ interface BlockListProps {
   activeColumn: string;
   blockToMoveInfo: BlockToMoveInfo | null;
   ghostTargetInfo: GhostTargetInfo | null;
+  activeDroppableId?: string | null; // Added prop
 }
 
 const BlockList = ({
@@ -222,6 +235,7 @@ const BlockList = ({
   activeColumn,
   blockToMoveInfo,
   ghostTargetInfo,
+  activeDroppableId, // Consuming the prop
 }: BlockListProps) => {
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
 
@@ -334,6 +348,9 @@ const BlockList = ({
                   isKeyboardModeActive={isKeyboardModeActive}
                   isMarkedForMove={isMarkedForMove}
                   isGhostDropTarget={isThisBlockGhostTarget} // Pass this for styling
+                  isDndDropTarget={
+                    `block-list-item-drop-${block.id}` === activeDroppableId
+                  } // Pass this for styling
                   onSelect={onBlockSelect}
                   onDoubleClick={handleBlockMove}
                 />
@@ -348,13 +365,16 @@ const BlockList = ({
 
             return (
               <PlaceholderItem
-                key={`block-slot-placeholder-${slotIndex}`}
+                key={`placeholder-${slotIndex}`}
                 slotIndex={slotIndex}
                 isGhostDropTarget={isThisPlaceholderGhostTarget}
                 ghostBlockData={
                   isThisPlaceholderGhostTarget
                     ? blockToMoveInfo?.sourceData || null
                     : null
+                }
+                isDndDropTarget={
+                  `block-list-placeholder-${slotIndex}` === activeDroppableId
                 }
               />
             );
