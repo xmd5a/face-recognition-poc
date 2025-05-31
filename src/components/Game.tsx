@@ -611,7 +611,7 @@ const Game = ({
           }}
         />
 
-        <div className="flex-1 grid grid-cols-3 mb-8">
+        <div className="flex-1 grid grid-cols-3">
           <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
@@ -747,7 +747,7 @@ const Game = ({
           </DndContext>
         </div>
 
-        <div className="h-[25vh] mt-4">
+        <div className="h-[25vh]">
           <Terminal
             isCompiling={isCompiling}
             errors={errors}

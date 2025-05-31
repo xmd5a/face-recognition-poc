@@ -155,7 +155,7 @@ const Terminal = ({
           }
         `}
       </style>
-      <div className="relative h-full bg-black/30 rounded-lg border border-terminal-green/20 overflow-hidden flex flex-col">
+      <div className="relative h-full bg-black/40 border border-white/10 overflow-hidden flex flex-col">
         <MatrixEffect isActive={isCompiling} />
 
         <div className="relative z-50 p-4 flex-grow flex flex-col justify-between">
