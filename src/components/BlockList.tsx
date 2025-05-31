@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export interface Block {
   id: string;
@@ -12,19 +12,19 @@ export interface Block {
 interface BlockItemProps {
   block: Block;
   isSelected: boolean;
-  isHighlighted: boolean;
+  isKeyboardHighlighted: boolean;
+  isMouseHovered: boolean;
   onSelect: (block: Block) => void;
   onDoubleClick?: (block: Block) => void;
-  onHover: (block: Block) => void;
 }
 
 const BlockItem = ({
   block,
   isSelected,
-  isHighlighted,
+  isKeyboardHighlighted,
+  isMouseHovered,
   onSelect,
   onDoubleClick,
-  onHover,
 }: BlockItemProps) => {
   const {
     attributes,
@@ -40,6 +40,15 @@ const BlockItem = ({
     transition,
   };
 
+  let blockClass = "block-base";
+  if (isSelected) {
+    blockClass = "block-selected";
+  } else if (isKeyboardHighlighted) {
+    blockClass = "block-highlighted";
+  } else if (isMouseHovered) {
+    blockClass = "block-highlighted";
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -47,17 +56,10 @@ const BlockItem = ({
       className={`
         p-3 rounded cursor-move transition-all relative
         ${isDragging ? "opacity-50 z-50 shadow-lg" : "opacity-100"}
-        ${
-          isSelected
-            ? "block-selected"
-            : isHighlighted
-            ? "block-highlighted"
-            : "block-base"
-        }
+        ${blockClass}
       `}
       onClick={() => onSelect(block)}
       onDoubleClick={() => onDoubleClick?.(block)}
-      onMouseEnter={() => onHover(block)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -105,6 +107,7 @@ interface BlockListProps {
   selectedIndex: number;
   onBlockSelect: (block: Block) => void;
   onBlockMove?: (block: Block) => void;
+  isKeyboardModeActive: boolean;
 }
 
 const BlockList = ({
@@ -113,24 +116,14 @@ const BlockList = ({
   selectedIndex,
   onBlockSelect,
   onBlockMove,
+  isKeyboardModeActive,
 }: BlockListProps) => {
-  const [hoveredBlock, setHoveredBlock] = useState<Block | null>(null);
-  const [isUsingKeyboard, setIsUsingKeyboard] = useState(false);
+  const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
+
   const selectedBlock =
     blocks.find((block) => block.id === selectedBlockId) || null;
 
-  useEffect(() => {
-    const handleKeyDown = () => setIsUsingKeyboard(true);
-    const handleMouseMove = () => setIsUsingKeyboard(false);
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("mousemove", handleMouseMove);
-    };
-  }, []);
+  const hoveredBlock = blocks.find((b) => b.id === hoveredBlockId) || null;
 
   const handleBlockMove = (block: Block) => {
     if (onBlockMove) {
@@ -143,27 +136,36 @@ const BlockList = ({
     }
   };
 
-  // Wybieramy blok do wyświetlenia w zależności od źródła interakcji
-  const displayedBlock = isUsingKeyboard
-    ? selectedBlock || hoveredBlock
+  const displayedBlock = isKeyboardModeActive
+    ? selectedBlock
     : hoveredBlock || selectedBlock;
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 p-4 space-y-2 relative z-10">
+      <div
+        className="flex-1 p-4 space-y-2 relative z-10"
+        onMouseLeave={() => !isKeyboardModeActive && setHoveredBlockId(null)}
+      >
         {blocks.map((block, index) => (
-          <BlockItem
+          <div
             key={block.id}
-            block={block}
-            isSelected={block.id === selectedBlockId}
-            isHighlighted={index === selectedIndex}
-            onSelect={(block) => {
-              setIsUsingKeyboard(true);
-              onBlockSelect(block);
-            }}
-            onDoubleClick={handleBlockMove}
-            onHover={setHoveredBlock}
-          />
+            onMouseEnter={() =>
+              !isKeyboardModeActive && setHoveredBlockId(block.id)
+            }
+          >
+            <BlockItem
+              block={block}
+              isSelected={block.id === selectedBlockId}
+              isKeyboardHighlighted={
+                isKeyboardModeActive && index === selectedIndex
+              }
+              isMouseHovered={
+                !isKeyboardModeActive && hoveredBlockId === block.id
+              }
+              onSelect={onBlockSelect}
+              onDoubleClick={handleBlockMove}
+            />
+          </div>
         ))}
       </div>
       <BlockDescription block={displayedBlock} />

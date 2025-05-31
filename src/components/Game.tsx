@@ -21,7 +21,7 @@ import useGameState from "../hooks/useGameState";
 import { useKeyboardNavigation } from "../hooks/useKeyboardNavigation";
 import type { Block } from "./BlockList";
 import ReactMarkdown from "react-markdown";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface GameProps {
   availableBlocks: Block[];
@@ -48,6 +48,7 @@ const Game = ({
   const [activeDroppableId, setActiveDroppableId] = useState<string | null>(
     null
   );
+  const [isMouseCursorVisible, setIsMouseCursorVisible] = useState(true);
 
   const { activeColumn, setActiveColumn, indices } = useKeyboardNavigation({
     availableBlocks: availableBlocks,
@@ -70,6 +71,82 @@ const Game = ({
       },
     })
   );
+
+  const isKeyboardModeActive = !isMouseCursorVisible;
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+      setIsMouseCursorVisible(false);
+    };
+
+    const handleMouseMove = () => {
+      setIsMouseCursorVisible(true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("mousemove", handleMouseMove, true);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("mousemove", handleMouseMove, true);
+      const existingStyleTag = document.getElementById("custom-cursor-style");
+      if (existingStyleTag) {
+        existingStyleTag.remove();
+      }
+      document.body.style.cursor = "auto";
+    };
+  }, []);
+
+  useEffect(() => {
+    const styleTagId = "custom-cursor-style";
+    let styleTag = document.getElementById(
+      styleTagId
+    ) as HTMLStyleElement | null;
+
+    if (isMouseCursorVisible) {
+      if (styleTag) {
+        styleTag.remove();
+      }
+      document.body.style.cursor = "auto";
+    } else {
+      if (!styleTag) {
+        styleTag = document.createElement("style");
+        styleTag.id = styleTagId;
+        styleTag.innerHTML = `
+          body,
+          body *,
+          [data-dndkit-draggable],
+          [data-dndkit-draggable] * {
+            cursor: none !important;
+          }
+        `;
+        document.head.appendChild(styleTag);
+      }
+      document.body.style.cursor = "none";
+    }
+
+    return () => {
+      const existingStyleTag = document.getElementById(styleTagId);
+      if (existingStyleTag) {
+        existingStyleTag.remove();
+      }
+      document.body.style.cursor = "auto";
+    };
+  }, [isMouseCursorVisible]);
+
+  useEffect(() => {
+    if (isKeyboardModeActive) {
+      document.body.classList.add("keyboard-mode-active");
+    } else {
+      document.body.classList.remove("keyboard-mode-active");
+    }
+    return () => {
+      document.body.classList.remove("keyboard-mode-active");
+    };
+  }, [isKeyboardModeActive]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -172,7 +249,9 @@ const Game = ({
               className={`bg-black/20 rounded-lg transition-colors ${
                 activeColumn === "blocks" ? "column-active" : "column-inactive"
               } relative`}
-              onMouseEnter={() => setActiveColumn("blocks")}
+              onMouseEnter={() => {
+                setActiveColumn("blocks");
+              }}
             >
               <SortableContext
                 id="available-sortable"
@@ -197,6 +276,7 @@ const Game = ({
                       actions.setWorkspace(newWs);
                     }
                   }}
+                  isKeyboardModeActive={isKeyboardModeActive}
                 />
               </SortableContext>
             </div>
