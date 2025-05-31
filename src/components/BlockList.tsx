@@ -144,14 +144,21 @@ const BlockList = ({
     <div className="h-full flex flex-col">
       <div
         className="flex-1 p-4 space-y-2 relative z-10"
-        onMouseLeave={() => !isKeyboardModeActive && setHoveredBlockId(null)}
+        onMouseLeave={() => {
+          if (!isKeyboardModeActive) {
+            setHoveredBlockId(null);
+          }
+        }}
       >
         {blocks.map((block, index) => (
           <div
             key={block.id}
-            onMouseEnter={() =>
-              !isKeyboardModeActive && setHoveredBlockId(block.id)
-            }
+            onMouseEnter={() => {
+              if (!isKeyboardModeActive) {
+                setHoveredBlockId(block.id);
+                onBlockSelect(block);
+              }
+            }}
           >
             <BlockItem
               block={block}

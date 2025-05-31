@@ -21,7 +21,7 @@ import useGameState from "../hooks/useGameState";
 import { useKeyboardNavigation } from "../hooks/useKeyboardNavigation";
 import type { Block } from "./BlockList";
 import ReactMarkdown from "react-markdown";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface GameProps {
   availableBlocks: Block[];
@@ -49,10 +49,12 @@ const Game = ({
     null
   );
   const [isMouseCursorVisible, setIsMouseCursorVisible] = useState(true);
+  const prevIsMouseCursorVisibleRef = useRef<boolean>(true);
 
   const { activeColumn, setActiveColumn, indices } = useKeyboardNavigation({
     availableBlocks: availableBlocks,
     workspace: workspace.filter(Boolean) as Block[],
+    selectedBlockId: selectedBlockId,
     onBlockSelect: (block) => actions.selectBlock(block.id),
     onWorkspaceChange: (newBlocks) => {
       const newSparseWorkspace = new Array(maxBlocks).fill(null);
@@ -97,6 +99,7 @@ const Game = ({
         existingStyleTag.remove();
       }
       document.body.style.cursor = "auto";
+      document.body.classList.remove("keyboard-mode-active");
     };
   }, []);
 
@@ -128,6 +131,14 @@ const Game = ({
       document.body.style.cursor = "none";
     }
 
+    if (
+      prevIsMouseCursorVisibleRef.current === false &&
+      isMouseCursorVisible === true
+    ) {
+      actions.selectBlock(null);
+    }
+    prevIsMouseCursorVisibleRef.current = isMouseCursorVisible;
+
     return () => {
       const existingStyleTag = document.getElementById(styleTagId);
       if (existingStyleTag) {
@@ -135,7 +146,7 @@ const Game = ({
       }
       document.body.style.cursor = "auto";
     };
-  }, [isMouseCursorVisible]);
+  }, [isMouseCursorVisible, actions]);
 
   useEffect(() => {
     if (isKeyboardModeActive) {
@@ -260,10 +271,10 @@ const Game = ({
               >
                 <BlockList
                   blocks={availableBlocks}
-                  selectedBlockId={
-                    activeColumn === "blocks" ? selectedBlockId : null
+                  selectedBlockId={selectedBlockId}
+                  selectedIndex={
+                    activeColumn === "blocks" ? indices.blocks : -1
                   }
-                  selectedIndex={indices.blocks}
                   onBlockSelect={(block) => actions.selectBlock(block.id)}
                   onBlockMove={(blockMoved) => {
                     const newWs = [...workspace];
@@ -294,9 +305,7 @@ const Game = ({
               <WorkspaceArea
                 workspace={workspace}
                 maxBlocks={maxBlocks}
-                selectedBlockId={
-                  activeColumn === "workspace" ? selectedBlockId : null
-                }
+                selectedBlockId={selectedBlockId}
                 activeDroppableId={activeDroppableId}
                 onSelectBlock={actions.selectBlock}
               />

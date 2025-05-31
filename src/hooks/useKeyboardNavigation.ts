@@ -6,6 +6,7 @@ type Column = "blocks" | "workspace";
 interface UseKeyboardNavigationProps {
   availableBlocks: Block[];
   workspace: Block[];
+  selectedBlockId: string | null;
   onBlockSelect: (block: Block) => void;
   onWorkspaceChange: (blocks: Block[]) => void;
   onCompile: () => void;
@@ -14,6 +15,7 @@ interface UseKeyboardNavigationProps {
 export const useKeyboardNavigation = ({
   availableBlocks,
   workspace,
+  selectedBlockId,
   onBlockSelect,
   onWorkspaceChange,
   onCompile,
@@ -23,54 +25,62 @@ export const useKeyboardNavigation = ({
     blocks: 0,
     workspace: 0,
   });
+  const [keyboardNavJustActivated, setKeyboardNavJustActivated] =
+    useState(false);
 
-  // Helper function to get the current list and its max index
-  const getCurrentListInfo = (column: Column) => {
-    const list = column === "blocks" ? availableBlocks : workspace;
-    const maxIndex = Math.max(0, list.length - 1);
-    return { list, maxIndex };
-  };
+  useEffect(() => {
+    const list = activeColumn === "blocks" ? availableBlocks : workspace;
+    const currentSelectedIndex = list.findIndex(
+      (b) => b.id === selectedBlockId
+    );
+    if (currentSelectedIndex !== -1) {
+      setIndices((prev) => ({ ...prev, [activeColumn]: currentSelectedIndex }));
+    } else {
+      setIndices((prev) => ({ ...prev, [activeColumn]: 0 }));
+    }
+  }, [selectedBlockId, activeColumn, availableBlocks, workspace]);
 
-  // Helper function to ensure index is within bounds for the given column
-  const getValidIndex = (index: number, column: Column) => {
-    const { maxIndex } = getCurrentListInfo(column);
-    return Math.min(Math.max(0, index), maxIndex);
-  };
+  useEffect(() => {
+    const down = () => setKeyboardNavJustActivated(true);
+    window.addEventListener("keydown", down, { once: true, capture: true });
+    return () => window.removeEventListener("keydown", down, true);
+  }, []);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      const { list, maxIndex } = getCurrentListInfo(activeColumn);
-      let newIndex: number;
+      const list = activeColumn === "blocks" ? availableBlocks : workspace;
+      if (!list.length) return;
+
+      let currentIndex = indices[activeColumn];
+
+      if (keyboardNavJustActivated && selectedBlockId) {
+        const indexFromSelection = list.findIndex(
+          (b) => b.id === selectedBlockId
+        );
+        if (indexFromSelection !== -1) {
+          currentIndex = indexFromSelection;
+        }
+        setKeyboardNavJustActivated(false);
+      }
+
+      let newIndex = currentIndex;
+      const maxIndex = list.length - 1;
 
       switch (event.key) {
         case "ArrowUp":
           event.preventDefault();
-          newIndex =
-            indices[activeColumn] > 0 ? indices[activeColumn] - 1 : maxIndex;
-          setIndices((prev) => ({ ...prev, [activeColumn]: newIndex }));
-          if (list[newIndex]) {
-            onBlockSelect(list[newIndex]);
-          }
+          newIndex = currentIndex > 0 ? currentIndex - 1 : maxIndex;
           break;
 
         case "ArrowDown":
           event.preventDefault();
-          newIndex =
-            indices[activeColumn] < maxIndex ? indices[activeColumn] + 1 : 0;
-          setIndices((prev) => ({ ...prev, [activeColumn]: newIndex }));
-          if (list[newIndex]) {
-            onBlockSelect(list[newIndex]);
-          }
+          newIndex = currentIndex < maxIndex ? currentIndex + 1 : 0;
           break;
 
         case "ArrowLeft":
           event.preventDefault();
           if (activeColumn === "workspace") {
             setActiveColumn("blocks");
-            const newIndex = getValidIndex(indices.blocks, "blocks");
-            if (availableBlocks[newIndex]) {
-              onBlockSelect(availableBlocks[newIndex]);
-            }
           }
           break;
 
@@ -78,29 +88,25 @@ export const useKeyboardNavigation = ({
           event.preventDefault();
           if (activeColumn === "blocks") {
             setActiveColumn("workspace");
-            const newIndex = getValidIndex(indices.workspace, "workspace");
-            if (workspace[newIndex]) {
-              onBlockSelect(workspace[newIndex]);
-            }
           }
           break;
 
         case "e":
         case "E":
           event.preventDefault();
-          if (activeColumn === "blocks" && list[indices[activeColumn]]) {
-            const block = list[indices[activeColumn]];
-            if (!workspace.find((b) => b.id === block.id)) {
+          if (list[currentIndex]) {
+            const block = list[currentIndex];
+            if (
+              activeColumn === "blocks" &&
+              !workspace.find((b) => b.id === block.id)
+            ) {
               onWorkspaceChange([...workspace, block]);
+            } else if (activeColumn === "workspace") {
+              const newWorkspace = workspace.filter(
+                (_, index) => index !== currentIndex
+              );
+              onWorkspaceChange(newWorkspace);
             }
-          } else if (
-            activeColumn === "workspace" &&
-            list[indices[activeColumn]]
-          ) {
-            const newWorkspace = workspace.filter(
-              (_, index) => index !== indices[activeColumn]
-            );
-            onWorkspaceChange(newWorkspace);
           }
           break;
 
@@ -110,7 +116,20 @@ export const useKeyboardNavigation = ({
           break;
 
         default:
-          break;
+          return;
+      }
+
+      if (
+        newIndex !== currentIndex ||
+        event.key === "ArrowLeft" ||
+        event.key === "ArrowRight"
+      ) {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+          setIndices((prev) => ({ ...prev, [activeColumn]: newIndex }));
+          if (list[newIndex]) {
+            onBlockSelect(list[newIndex]);
+          }
+        }
       }
     },
     [
@@ -118,9 +137,11 @@ export const useKeyboardNavigation = ({
       indices,
       availableBlocks,
       workspace,
+      selectedBlockId,
       onBlockSelect,
       onWorkspaceChange,
       onCompile,
+      keyboardNavJustActivated,
     ]
   );
 
@@ -135,6 +156,5 @@ export const useKeyboardNavigation = ({
     activeColumn,
     setActiveColumn,
     indices,
-    selectedIndex: indices[activeColumn] || 0,
   };
 };
