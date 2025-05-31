@@ -237,40 +237,13 @@ const predefinedScenarios: ScenarioDetails[] = [
 // --- Validation Helper ---
 const validateLevelData = (data: LevelData): boolean => {
   if (data.required <= 0) return false;
-  if (data.required > 7) {
-    console.warn(
-      `Validation Error: Required blocks (${data.required}) cannot exceed 7.`
-    );
-    return false;
-  }
-  if (data.availableBlocks.length <= data.required) {
-    console.warn(
-      `Validation Error: Available blocks (${data.availableBlocks.length}) must be strictly greater than required blocks (${data.required}).`
-    );
-    return false;
-  }
-  if (data.availableBlocks.length < data.required + 2) {
-    console.warn(
-      `Validation Error: Available blocks (${
-        data.availableBlocks.length
-      }) must be at least 2 more than required blocks (${
-        data.required
-      }). Required: ${data.required + 2}.`
-    );
-    return false;
-  }
-  if (data.solution.length !== data.required) {
-    console.warn(
-      `Validation Error: Solution length (${data.solution.length}) must match required blocks (${data.required}).`
-    );
-    return false;
-  }
+  if (data.required > 7) return false;
+  if (data.availableBlocks.length <= data.required) return false;
+  if (data.availableBlocks.length < data.required + 2) return false;
+  if (data.solution.length !== data.required) return false;
   // Check if all solution blocks are in available blocks
   for (const solId of data.solution) {
     if (!data.availableBlocks.some((ab) => ab.id === solId)) {
-      console.warn(
-        `Validation Error: Solution block ID "${solId}" not found in available blocks.`
-      );
       return false;
     }
   }
@@ -290,7 +263,6 @@ const encodeLevelDataToQueryString = (data: LevelData): string => {
     params.set("hint", btoa(data.hint));
     return params.toString();
   } catch (e) {
-    console.error("Error encoding level data:", e);
     return "";
   }
 };
@@ -319,7 +291,6 @@ const decodeLevelDataFromParams = (
       required <= 0 ||
       !hint
     ) {
-      console.warn("Decoding failed: Missing essential data from URL params.");
       return null;
     }
 
@@ -332,13 +303,11 @@ const decodeLevelDataFromParams = (
 
     // Apply new validation rules
     if (!validateLevelData(decodedData)) {
-      console.warn("Decoded level data failed validation rules.");
       return null;
     }
 
     return decodedData;
   } catch (e) {
-    console.error("Error decoding level data from full params:", e);
     return null;
   }
 };
@@ -359,14 +328,10 @@ const getLevelDataFromScenario = (
 
     // Validate scenario data as well
     if (!validateLevelData(scenarioLevelData)) {
-      console.warn(
-        `Predefined scenario "${scenario.sid}" failed validation rules.`
-      );
-      return null; // This scenario is invalid
+      return null;
     }
     return scenarioLevelData;
   } catch (e) {
-    console.error(`Error processing scenario ${scenario.sid}:`, e);
     return null;
   }
 };
@@ -388,21 +353,13 @@ const App = () => {
     if (scenarioId) {
       const scenario = predefinedScenarios.find((s) => s.sid === scenarioId);
       if (scenario) {
-        console.log(`Loading predefined scenario: ${scenarioId}`);
         levelToLoad = getLevelDataFromScenario(scenario);
         if (levelToLoad) {
           newQueryString = encodeLevelDataToQueryString(levelToLoad);
         } else {
-          // Predefined scenario itself is invalid
-          console.warn(
-            `Predefined scenario "${scenarioId}" is invalid. Falling back to default.`
-          );
           redirectToDefault = true;
         }
       } else {
-        console.warn(
-          `Scenario ID "${scenarioId}" not found. Falling back to default.`
-        );
         redirectToDefault = true;
       }
     } else if (
@@ -411,16 +368,11 @@ const App = () => {
       params.has("required") &&
       params.has("hint")
     ) {
-      console.log("Attempting to load level from full URL parameters.");
       levelToLoad = decodeLevelDataFromParams(params);
       if (!levelToLoad) {
-        console.warn(
-          "Invalid/failed validation for full parameters in URL. Falling back to default."
-        );
         redirectToDefault = true;
       }
     } else {
-      // Neither sid nor full params are present
       redirectToDefault = true;
     }
 
@@ -434,38 +386,27 @@ const App = () => {
         );
       }
     } else {
-      // Load default scenario and redirect
-      console.log("Redirecting to a valid default scenario.");
-      // Attempt to find a valid default scenario from the predefined list
       let validDefaultLevel: LevelData | null = null;
       for (const sc of predefinedScenarios) {
         validDefaultLevel = getLevelDataFromScenario(sc);
-        if (validDefaultLevel) break; // Found a valid one
+        if (validDefaultLevel) break;
       }
 
       if (!validDefaultLevel) {
-        // Critical error: No valid predefined scenarios to fall back to.
-        // This shouldn't happen if predefinedScenarios are defined correctly.
-        console.error(
-          "CRITICAL: No valid default scenarios available! Check predefinedScenarios definitions and validation logic."
-        );
-        setIsLoading(false); // Stop loading, show error or blank page
-        // Optionally render an error message component here
-        setCurrentLevelData(null); // Ensure no game renders
+        setIsLoading(false);
+        setCurrentLevelData(null);
         return;
       }
 
       const encodedDefault = encodeLevelDataToQueryString(validDefaultLevel);
-      // Prevent redirect loop if already on the default and it somehow was invalid initially
       if (
         `${window.location.pathname}?${encodedDefault}` !== window.location.href
       ) {
         window.location.replace(
           `${window.location.pathname}?${encodedDefault}`
         );
-        return; // Exit useEffect early due to redirect
+        return;
       }
-      // If we are already at the default URL (e.g. after a redirect), set the data
       setCurrentLevelData(validDefaultLevel);
     }
 
