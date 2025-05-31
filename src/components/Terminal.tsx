@@ -143,7 +143,7 @@ const Terminal = ({
         commandToType.length * commandTypingSpeed +
         (mockCode.length / charsPerBatch) * codeTypingSpeed;
       // Timeout should be less than parent useGameState's 5000ms compile time
-      const actualDisplayTimeout = Math.min(typingDurationEstimate + 200, 4800);
+      const actualDisplayTimeout = 9000;
 
       resultTimeoutRef.current = window.setTimeout(() => {
         if (commandTypingIntervalRef.current)
@@ -329,7 +329,7 @@ const Terminal = ({
                     ? "text-white button-gradient-compiling cursor-wait"
                     : !allBlocksPlaced || !canCompileAfterAttempt
                     ? "bg-gray-600 text-gray-400 cursor-not-allowed opacity-60"
-                    : "bg-terminal-green text-white font-semibold border border-green-600 hover:bg-green-400 hover:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 button-pulse-green"
+                    : "bg-terminal-green text-black font-semibold border border-green-600 bg-green-400  focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 button-pulse-green"
                 }
               `}
             >

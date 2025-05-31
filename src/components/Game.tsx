@@ -888,6 +888,18 @@ const Game = ({
           }}
         />
 
+        <div className="grid grid-cols-3 bg-black/20">
+          <div className="border border-neutral-700 p-2 px-4 border-b-0 w-38">
+            functions.3gd
+          </div>
+          <div className="border border-neutral-700 p-2 px-4 border-b-0 w-34">
+            workflow.3gd
+          </div>
+          <div className="border border-neutral-700 p-2 px-4 w-30 border-b-0">
+            readme.md
+          </div>
+        </div>
+
         <div className="flex-1 grid grid-cols-3">
           <DndContext
             sensors={sensors}
@@ -975,7 +987,7 @@ const Game = ({
               </SortableContext>
             </div>
 
-            <div className="bg-black/20 transition-colors pointer-events-none">
+            <div className="bg-black/20 transition-colors pointer-events-none border border-neutral-700">
               <div className="p-4">
                 <div className="prose prose-invert prose-sm max-w-none">
                   <ReactMarkdown>{hint}</ReactMarkdown>
