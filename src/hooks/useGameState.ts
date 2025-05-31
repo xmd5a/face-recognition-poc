@@ -110,7 +110,7 @@ const useGameState = ({
         setGameState((prev) => ({
           ...prev,
           isCompiling: false,
-          errors: ["0 błędów, przystępuję do kompilacji"],
+          errors: [],
         }));
       } else {
         setGameState((prev) => ({

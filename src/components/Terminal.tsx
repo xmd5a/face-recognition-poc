@@ -106,6 +106,7 @@ const Terminal = ({
   onCompile,
 }: TerminalProps) => {
   const [step, setStep] = useState(0);
+  const [hasCompilationAttempted, setHasCompilationAttempted] = useState(false);
   const { displayedText: initText } = useTypewriter(
     "Initializing compilation process...",
     30,
@@ -113,23 +114,23 @@ const Terminal = ({
   );
 
   useEffect(() => {
-    if (!isCompiling) {
+    if (isCompiling) {
+      setHasCompilationAttempted(true);
       setStep(0);
-      return;
+      const timeouts = [
+        setTimeout(() => setStep(1), 1000),
+        setTimeout(() => setStep(2), 2000),
+        setTimeout(() => setStep(3), 3000),
+      ];
+      return () => timeouts.forEach(clearTimeout);
+    } else {
+      setStep(0);
     }
-
-    const timeouts = [
-      setTimeout(() => setStep(1), 1000),
-      setTimeout(() => setStep(2), 2000),
-      setTimeout(() => setStep(3), 3000),
-    ];
-
-    return () => timeouts.forEach(clearTimeout);
   }, [isCompiling]);
 
   const handleTryAgain = () => {
     onReset();
-    onCompile();
+    setHasCompilationAttempted(false);
   };
 
   return (
@@ -169,11 +170,16 @@ const Terminal = ({
             ))}
             <button
               onClick={handleTryAgain}
-              className="mt-4 px-4 py-2 bg-terminal-green/10 border border-terminal-green/20 
+              className="mt-4 px-4 py-2 bg-terminal-green/10 border border-terminal-green/20
                        rounded hover:bg-terminal-green/20 transition-colors"
             >
               Try Again
             </button>
+          </div>
+        ) : !isCompiling && errors.length === 0 && hasCompilationAttempted ? (
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-green-500 rounded-full mr-3" />
+            <span className="text-green-400">Compilation Successful!</span>
           </div>
         ) : (
           <div className="flex items-center">
