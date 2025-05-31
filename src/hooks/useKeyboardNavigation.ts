@@ -95,12 +95,15 @@ export const useKeyboardNavigation = ({
         if (activeColumn !== columnOfDraggedBlock) {
           setActiveColumn(columnOfDraggedBlock);
         }
-        if (indices[columnOfDraggedBlock] !== indexInDenseListOfColumn) {
-          setIndices((prev) => ({
-            ...prev,
-            [columnOfDraggedBlock!]: indexInDenseListOfColumn,
-          }));
-        }
+        setIndices((prevIndices) => {
+          if (prevIndices[columnOfDraggedBlock!] !== indexInDenseListOfColumn) {
+            return {
+              ...prevIndices,
+              [columnOfDraggedBlock!]: indexInDenseListOfColumn,
+            };
+          }
+          return prevIndices;
+        });
       } else {
         console.warn(
           "useKeyboardNavigation: justDraggedBlockId was set, but block not found or mismatch with selectedBlockId.",
@@ -124,12 +127,12 @@ export const useKeyboardNavigation = ({
       );
 
       if (selectedIdxInList !== -1) {
-        if (indices[activeColumn] !== selectedIdxInList) {
-          setIndices((prev) => ({
-            ...prev,
-            [activeColumn]: selectedIdxInList,
-          }));
-        }
+        setIndices((prevIndices) => {
+          if (prevIndices[activeColumn] !== selectedIdxInList) {
+            return { ...prevIndices, [activeColumn]: selectedIdxInList };
+          }
+          return prevIndices;
+        });
         return;
       }
     }
@@ -143,8 +146,13 @@ export const useKeyboardNavigation = ({
       const selectedIdx = listForSync.findIndex(
         (b) => b.id === selectedBlockId
       );
-      if (selectedIdx !== -1 && indices[activeColumn] !== selectedIdx) {
-        setIndices((prev) => ({ ...prev, [activeColumn]: selectedIdx }));
+      if (selectedIdx !== -1) {
+        setIndices((prevIndices) => {
+          if (prevIndices[activeColumn] !== selectedIdx) {
+            return { ...prevIndices, [activeColumn]: selectedIdx };
+          }
+          return prevIndices;
+        });
       }
       return;
     }

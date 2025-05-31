@@ -153,21 +153,30 @@ const Game = ({
     [actions]
   );
 
+  const memoizedOnBlockSelect = useCallback(
+    (block: Block | null) => {
+      actions.selectBlock(block ? block.id : null);
+    },
+    [actions]
+  );
+
+  const memoizedOnWorkspaceChange = useCallback(
+    (newBlocks: (Block | null)[]) => {
+      const newSparseWorkspace = new Array(maxBlocks).fill(null);
+      newBlocks.forEach((b, i) => {
+        if (i < maxBlocks) newSparseWorkspace[i] = b;
+      });
+      actions.setWorkspace(newSparseWorkspace);
+    },
+    [actions, maxBlocks]
+  );
+
   const { activeColumn, setActiveColumn, indices } = useKeyboardNavigation({
     availableBlockSlots: availableBlockSlots,
     workspace: workspace,
     selectedBlockId: selectedBlockId,
-    onBlockSelect: (block) => actions.selectBlock(block ? block.id : null),
-    onWorkspaceChange: useCallback(
-      (newBlocks) => {
-        const newSparseWorkspace = new Array(maxBlocks).fill(null);
-        newBlocks.forEach((b, i) => {
-          if (i < maxBlocks) newSparseWorkspace[i] = b;
-        });
-        actions.setWorkspace(newSparseWorkspace);
-      },
-      [actions, maxBlocks]
-    ),
+    onBlockSelect: memoizedOnBlockSelect,
+    onWorkspaceChange: memoizedOnWorkspaceChange,
     onAvailableBlocksChange: handleAvailableSlotsChange,
     onCompile: actions.compile,
     blockToMoveInfo,
@@ -888,14 +897,35 @@ const Game = ({
           }}
         />
 
-        <div className="grid grid-cols-3 bg-black/20">
-          <div className="border border-neutral-700 p-2 px-4 border-b-0 w-38">
+        <div className="grid grid-cols-3 bg-black/20" id="tabs">
+          <div
+            className={`border  p-2 px-4 border-b-0 w-38 cursor-pointer transition-colors
+                        ${
+                          activeColumn === "blocks"
+                            ? "text-terminal-green font-semibold relative bg-green-900/30 border border-[rgba(0,255,0,0.5)] after:h-1 after:content-[''] after:absolute after:left-0 after:right-0 after:bottom-[-4px] after:bg-[#17210F] after:z-10"
+                            : "border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700/30"
+                        }`}
+            onClick={() => setActiveColumn("blocks")}
+          >
             functions.3gd
           </div>
-          <div className="border border-neutral-700 p-2 px-4 border-b-0 w-34">
+          <div
+            className={`border  p-2 px-4 border-b-0 w-34 cursor-pointer transition-colors
+                        ${
+                          activeColumn === "workspace"
+                            ? "text-terminal-green font-semibold relative bg-green-900/30 border border-[rgba(0,255,0,0.5)] after:h-1 after:content-[''] after:absolute after:left-0 after:right-0 after:bottom-[-4px] after:bg-[#17210F] after:z-10"
+                            : "border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700/30"
+                        }`}
+            onClick={() => setActiveColumn("workspace")}
+          >
             workflow.3gd
           </div>
-          <div className="border border-neutral-700 p-2 px-4 w-30 border-b-0">
+          <div
+            className={
+              `border border-neutral-700 p-2 px-4 w-30 border-b-0 transition-colors
+                        ${"text-neutral-400"}` // readme.md is not interactive for now
+            }
+          >
             readme.md
           </div>
         </div>
