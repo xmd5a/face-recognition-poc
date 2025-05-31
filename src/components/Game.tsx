@@ -692,6 +692,45 @@ const Game = ({
               <div className="p-4">
                 <div className="prose prose-invert prose-sm max-w-none">
                   <ReactMarkdown>{hint}</ReactMarkdown>
+                  <div className="mt-4 mb-4 controls">
+                    <h3>controls</h3>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded">
+                      ↑/↓
+                    </kbd>
+                    <span className="text-xs opacity-70">Move</span>
+
+                    <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded ml-4">
+                      ←/→
+                    </kbd>
+                    <span className="text-xs opacity-70">Move</span>
+
+                    <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded ml-4">
+                      Enter
+                    </kbd>
+                    <span className="text-xs opacity-70">Compile</span>
+                  </div>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded">
+                      E
+                    </kbd>
+                    <span className="text-xs opacity-70">
+                      Pick up / Place block
+                    </span>
+                    <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded ml-4">
+                      Esc
+                    </kbd>
+                    <span className="text-xs opacity-70">Cancel selection</span>
+                  </div>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded">
+                      Mouse
+                    </kbd>
+                    <span className="text-xs opacity-70">
+                      Drag & Drop to move blocks
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

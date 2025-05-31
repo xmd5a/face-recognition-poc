@@ -345,10 +345,20 @@ body {
   margin-bottom: 0.75em;
 }
 
+.prose .controls::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 1px;
+  background-color: var(--tw-prose-hr, rgba(229, 229, 229, 0.3));
+  margin-bottom: 0.75em;
+}
+
 /* Style dla H3 */
 .prose :where(h3):not(:where([class~="not-prose"] *)) {
   color: var(--tw-prose-headings, #e5e5e5);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1.25em;
   margin-top: 1.25em;
   margin-bottom: 0.5em;
 }
