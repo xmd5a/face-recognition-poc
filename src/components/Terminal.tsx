@@ -41,7 +41,7 @@ const Terminal = ({
   const [showPostErrorPrompt, setShowPostErrorPrompt] = useState(false);
   const scrollableContainerRef = useRef<HTMLDivElement>(null); // Ref for scrolling
 
-  const commandToType = "run compilation.exe --source=latest";
+  const commandToType = "rrun compilation.exe --source=latest ";
   const mockCode = `
 [INFO] Initializing Advanced Heuristic Analysis Engine...
 [INFO] Accessing secure block chain ledger for validation protocols...

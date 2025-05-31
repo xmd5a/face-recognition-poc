@@ -24,6 +24,9 @@ interface UseKeyboardNavigationProps {
   isDraggingDnd: boolean;
   justDraggedBlockId: string | null;
   setJustDraggedBlockId: React.Dispatch<React.SetStateAction<string | null>>;
+  currentBlocksCount: number;
+  isCompiling: boolean;
+  canCompileAfterAttempt: boolean;
 }
 
 export const useKeyboardNavigation = ({
@@ -42,6 +45,9 @@ export const useKeyboardNavigation = ({
   isDraggingDnd,
   justDraggedBlockId,
   setJustDraggedBlockId,
+  currentBlocksCount,
+  isCompiling,
+  canCompileAfterAttempt,
 }: UseKeyboardNavigationProps) => {
   const [activeColumn, setActiveColumn] = useState<Column>("blocks");
   const [indices, setIndices] = useState({
@@ -543,68 +549,120 @@ export const useKeyboardNavigation = ({
             }
           }
           break;
+        case "Enter":
+          if (
+            !blockToMoveInfo &&
+            currentBlocksCount === maxBlocks &&
+            !isCompiling &&
+            canCompileAfterAttempt
+          ) {
+            event.preventDefault();
+            onCompile();
+          }
+          break;
         case "e":
         case "E":
           event.preventDefault();
           if (!blockToMoveInfo) {
-            const blockToInitiateMove =
-              denseCurrentList[currentIndexInDenseList];
-            if (blockToInitiateMove) {
-              let rawSourceIndex = -1;
-              if (activeColumn === "workspace") {
-                rawSourceIndex = workspace.findIndex(
-                  (b) => b?.id === blockToInitiateMove.id
-                );
-              } else {
-                rawSourceIndex = availableBlockSlots.findIndex(
-                  (b) => b?.id === blockToInitiateMove.id
-                );
+            const currentList =
+              activeColumn === "blocks"
+                ? (availableBlockSlots.filter(Boolean) as Block[])
+                : (workspace.filter(Boolean) as Block[]);
+            const currentIndexInDense = indices[activeColumn];
+
+            if (
+              currentIndexInDense >= 0 &&
+              currentIndexInDense < currentList.length
+            ) {
+              const blockToPickUp = currentList[currentIndexInDense];
+              if (blockToPickUp) {
+                const sourceSlotIndex =
+                  activeColumn === "blocks"
+                    ? availableBlockSlots.findIndex(
+                        (b) => b?.id === blockToPickUp.id
+                      )
+                    : workspace.findIndex((b) => b?.id === blockToPickUp.id);
+
+                setBlockToMoveInfo({
+                  id: blockToPickUp.id,
+                  sourceColumn: activeColumn,
+                  sourceData: blockToPickUp,
+                  sourceIndex: sourceSlotIndex,
+                });
+
+                if (activeColumn === "blocks") {
+                  setActiveColumn("workspace");
+                  const firstEmptyWorkspaceSlot = workspace.findIndex(
+                    (slot) => slot === null
+                  );
+
+                  let targetWorkspaceIndex = 0;
+                  let targetIsPlaceholder = false;
+                  let targetBlockIdInWorkspace: string | undefined = undefined;
+
+                  if (firstEmptyWorkspaceSlot !== -1) {
+                    targetWorkspaceIndex = firstEmptyWorkspaceSlot;
+                    targetIsPlaceholder = true;
+                    onBlockSelect(null);
+                  } else {
+                    targetWorkspaceIndex = 0;
+                    if (workspace[0]) {
+                      targetIsPlaceholder = false;
+                      targetBlockIdInWorkspace = workspace[0]?.id;
+                      onBlockSelect(workspace[0]);
+                    } else {
+                      targetIsPlaceholder = true;
+                      onBlockSelect(null);
+                    }
+                  }
+
+                  setIndices((prev) => ({
+                    ...prev,
+                    workspace: targetWorkspaceIndex,
+                  }));
+                  setGhostTargetInfo({
+                    targetColumn: "workspace",
+                    targetIndex: targetWorkspaceIndex,
+                    isTargetPlaceholder: targetIsPlaceholder,
+                    targetBlockId: targetBlockIdInWorkspace,
+                  });
+                } else {
+                  setActiveColumn("blocks");
+                  const firstEmptyAvailableSlot = availableBlockSlots.findIndex(
+                    (slot) => slot === null
+                  );
+
+                  let targetAvailableSlotIndex = 0;
+                  let targetIsPlaceholderInAvailable = false;
+                  let targetBlockIdInAvailable: string | undefined = undefined;
+
+                  if (firstEmptyAvailableSlot !== -1) {
+                    targetAvailableSlotIndex = firstEmptyAvailableSlot;
+                    targetIsPlaceholderInAvailable = true;
+                    onBlockSelect(null);
+                  } else {
+                    targetAvailableSlotIndex = 0;
+                    if (availableBlockSlots[0]) {
+                      targetIsPlaceholderInAvailable = false;
+                      targetBlockIdInAvailable = availableBlockSlots[0]?.id;
+                      onBlockSelect(availableBlockSlots[0]);
+                    } else {
+                      targetIsPlaceholderInAvailable = true;
+                      onBlockSelect(null);
+                    }
+                  }
+                  setIndices((prev) => ({
+                    ...prev,
+                    blocks: targetAvailableSlotIndex,
+                  }));
+                  setGhostTargetInfo({
+                    targetColumn: "blocks",
+                    targetIndex: targetAvailableSlotIndex,
+                    isTargetPlaceholder: targetIsPlaceholderInAvailable,
+                    targetBlockId: targetBlockIdInAvailable,
+                  });
+                }
               }
-              if (rawSourceIndex === -1) return;
-
-              const initiatingColumn = activeColumn;
-
-              setBlockToMoveInfo({
-                id: blockToInitiateMove.id,
-                sourceColumn: initiatingColumn,
-                sourceData: blockToInitiateMove,
-                sourceIndex: rawSourceIndex,
-              });
-
-              let columnForGhostTarget: Column;
-              let initialTargetSlotIndexForGhost: number;
-              let initialTargetIsPlaceholderForGhost: boolean;
-              let initialTargetBlockIdForGhost: string | null;
-
-              if (initiatingColumn === "workspace") {
-                columnForGhostTarget = "workspace";
-                initialTargetSlotIndexForGhost = rawSourceIndex;
-                const blockAtSource = workspace[rawSourceIndex];
-                initialTargetIsPlaceholderForGhost = blockAtSource === null;
-                initialTargetBlockIdForGhost = blockAtSource
-                  ? blockAtSource.id
-                  : null;
-              } else {
-                columnForGhostTarget = "workspace";
-                initialTargetSlotIndexForGhost = 0;
-                const targetListForGhost = workspace;
-                initialTargetIsPlaceholderForGhost =
-                  targetListForGhost.length === 0 ||
-                  targetListForGhost[0] === null;
-                initialTargetBlockIdForGhost =
-                  initialTargetIsPlaceholderForGhost || !targetListForGhost[0]
-                    ? null
-                    : targetListForGhost[0]?.id || null;
-              }
-
-              setActiveColumn(columnForGhostTarget);
-
-              setGhostTargetInfo({
-                targetColumn: columnForGhostTarget,
-                targetIndex: initialTargetSlotIndexForGhost,
-                isTargetPlaceholder: initialTargetIsPlaceholderForGhost,
-                targetBlockId: initialTargetBlockIdForGhost,
-              });
             }
           } else {
             if (
@@ -737,6 +795,9 @@ export const useKeyboardNavigation = ({
       isDraggingDnd,
       justDraggedBlockId,
       setJustDraggedBlockId,
+      currentBlocksCount,
+      isCompiling,
+      canCompileAfterAttempt,
     ]
   );
 

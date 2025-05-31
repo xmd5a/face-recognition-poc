@@ -75,26 +75,24 @@ interface BlockItemProps {
   block: Block;
   isSelected: boolean;
   isKeyboardHighlighted: boolean;
-  isMouseHovered: boolean;
   isKeyboardModeActive: boolean;
   isMarkedForMove: boolean;
   isGhostDropTarget: boolean;
-  isDndDropTarget?: boolean; // Added for DND drag over highlighting
-  onSelect: (block: Block) => void;
-  onDoubleClick?: (block: Block) => void;
+  isDndDropTarget?: boolean;
+  onBlockSelect: (block: Block | null) => void;
+  onBlockDeselect: () => void;
 }
 
 const BlockItem = ({
   block,
   isSelected,
   isKeyboardHighlighted,
-  isMouseHovered,
   isKeyboardModeActive,
   isMarkedForMove,
   isGhostDropTarget,
-  isDndDropTarget, // Added
-  onSelect,
-  onDoubleClick,
+  isDndDropTarget,
+  onBlockSelect,
+  onBlockDeselect,
 }: BlockItemProps) => {
   const {
     attributes,
@@ -146,9 +144,9 @@ const BlockItem = ({
   let blockClass = "block-base";
   if (isMarkedForMove) {
     blockClass = "block-marked-for-move";
-  } else if (isKeyboardHighlighted) {
+  } else if (isKeyboardModeActive && isKeyboardHighlighted) {
     blockClass = "block-selected";
-  } else if (!isKeyboardModeActive && (isSelected || isMouseHovered)) {
+  } else if (!isKeyboardModeActive && isSelected) {
     blockClass = "block-selected";
   }
 
@@ -165,22 +163,42 @@ const BlockItem = ({
     }
   `;
 
+  const handleMouseEnter = () => {
+    if (!isKeyboardModeActive) {
+      onBlockSelect(block);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isKeyboardModeActive) {
+      if (isSelected) {
+        onBlockDeselect();
+      }
+    }
+  };
+
   return (
     <div
       ref={setCombinedNodeRef} // MODIFIED
       style={style}
       className={combinedClasses.trim()}
-      onClick={() => onSelect(block)}
-      onDoubleClick={() => onDoubleClick?.(block)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={() => {
+        if (!isKeyboardModeActive) onBlockSelect(block);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onSelect(block);
+          if (isKeyboardModeActive) {
+            onBlockSelect(block);
+          }
         }
       }}
       aria-selected={isSelected || isKeyboardHighlighted}
       {...attributes}
       {...listeners}
+      data-block-id={block.id}
     >
       <div className="font-mono terminal-text">{block.name}</div>
     </div>
@@ -216,7 +234,7 @@ interface BlockListProps {
   blockSlots: (Block | null)[]; // MODIFIED: from blocks: Block[]
   selectedBlockId: string | null;
   selectedIndex: number; // This is index in DENSE list of blocks
-  onBlockSelect: (block: Block) => void;
+  onBlockSelect: (block: Block | null) => void;
   onBlockMove?: (block: Block) => void; // This might need re-evaluation for sparse list
   isKeyboardModeActive: boolean;
   activeColumn: string;
@@ -237,14 +255,10 @@ const BlockList = ({
   ghostTargetInfo,
   activeDroppableId, // Consuming the prop
 }: BlockListProps) => {
-  const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
-
   const denseBlocks = blockSlots.filter(Boolean) as Block[];
 
   const selectedBlockDetails =
     denseBlocks.find((b) => b.id === selectedBlockId) || null;
-  const hoveredBlockDetails =
-    denseBlocks.find((b) => b.id === hoveredBlockId) || null;
 
   const blockMarkedForMoveInThisColumnData =
     blockToMoveInfo?.sourceColumn === "blocks"
@@ -271,9 +285,7 @@ const BlockList = ({
 
   const displayedBlockForDescription =
     blockMarkedForMoveInThisColumnData || // If a block from this list is marked for move, show its desc
-    (isKeyboardModeActive
-      ? selectedBlockDetails // selected via keyboard (refers to dense list)
-      : hoveredBlockDetails || selectedBlockDetails); // hovered or selected via mouse
+    selectedBlockDetails; // Simplified: always use selectedBlockDetails for description
 
   // Get the actual block that is highlighted by keyboard (based on selectedIndex in dense list)
   const keyboardHighlightedBlock =
@@ -285,14 +297,7 @@ const BlockList = ({
 
   return (
     <div className="h-full flex flex-col">
-      <div
-        className="flex-1 p-4 space-y-2 relative z-10"
-        onMouseLeave={() => {
-          if (!isKeyboardModeActive) {
-            setHoveredBlockId(null);
-          }
-        }}
-      >
+      <div className="flex-1 p-4 space-y-2 relative z-10">
         {blockSlots.map((slotItem, slotIndex) => {
           if (slotItem) {
             // It's a Block
@@ -305,11 +310,6 @@ const BlockList = ({
               activeColumn === "blocks" &&
               isKeyboardModeActive &&
               keyboardHighlightedBlock?.id === block.id && // Compare with the actual highlighted block
-              !blockToMoveInfo;
-            const isMouseHovered =
-              !isKeyboardModeActive &&
-              hoveredBlockId === block.id &&
-              activeColumn === "blocks" &&
               !blockToMoveInfo;
             const isMarkedForMove =
               blockToMoveInfo?.sourceColumn === "blocks" &&
@@ -324,12 +324,6 @@ const BlockList = ({
               <div
                 key={block.id} // Use block.id for sortable item key
                 className="relative"
-                onMouseEnter={() => {
-                  if (!isKeyboardModeActive && activeColumn === "blocks") {
-                    setHoveredBlockId(block.id);
-                    if (!blockToMoveInfo) onBlockSelect(block);
-                  }
-                }}
               >
                 {isThisBlockGhostTarget && blockToMoveInfo?.sourceData && (
                   <div className="block-ghost-preview">
@@ -344,15 +338,14 @@ const BlockList = ({
                   isKeyboardHighlighted={
                     isKeyboardHighlighted && !isMarkedForMove
                   }
-                  isMouseHovered={isMouseHovered && !isMarkedForMove}
                   isKeyboardModeActive={isKeyboardModeActive}
                   isMarkedForMove={isMarkedForMove}
                   isGhostDropTarget={isThisBlockGhostTarget} // Pass this for styling
                   isDndDropTarget={
                     `block-list-item-drop-${block.id}` === activeDroppableId
                   } // Pass this for styling
-                  onSelect={onBlockSelect}
-                  onDoubleClick={handleBlockMove}
+                  onBlockSelect={onBlockSelect}
+                  onBlockDeselect={() => onBlockSelect(null)}
                 />
               </div>
             );

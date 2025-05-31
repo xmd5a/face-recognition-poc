@@ -2,12 +2,14 @@ import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { Block } from "./BlockList";
 import type { BlockToMoveInfo, GhostTargetInfo } from "./Game";
+import { useState } from "react";
 
 interface WorkspaceBlockItemProps {
   block: Block;
   slotIndex: number;
   isSelected: boolean;
   isKeyboardHighlighted: boolean;
+  isKeyboardModeActive: boolean;
   isMarkedForMove: boolean;
   isGhostDropTarget: boolean;
   isDndDropTarget?: boolean;
@@ -19,6 +21,7 @@ const WorkspaceBlockItem = ({
   slotIndex,
   isSelected,
   isKeyboardHighlighted,
+  isKeyboardModeActive,
   isMarkedForMove,
   isGhostDropTarget,
   isDndDropTarget,
@@ -59,9 +62,9 @@ const WorkspaceBlockItem = ({
   let blockClass = "block-base";
   if (isMarkedForMove) {
     blockClass = "block-marked-for-move";
-  } else if (isKeyboardHighlighted) {
+  } else if (isKeyboardModeActive && isKeyboardHighlighted) {
     blockClass = "block-selected";
-  } else if (isSelected) {
+  } else if (!isKeyboardModeActive && isSelected) {
     blockClass = "block-selected";
   }
 
@@ -82,7 +85,9 @@ const WorkspaceBlockItem = ({
       ref={setCombinedNodeRef}
       style={style}
       className={combinedClasses.trim()}
-      onClick={() => onSelect(block.id)}
+      onClick={() => {
+        if (!isKeyboardModeActive) onSelect(block.id);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -177,7 +182,17 @@ const WorkspaceArea = ({
   const denseWorkspaceBlocks = workspace.filter(Boolean) as Block[];
 
   return (
-    <div ref={workspaceDroppableRef} className="h-full flex flex-col">
+    <div
+      ref={workspaceDroppableRef}
+      className="h-full flex flex-col"
+      onMouseLeave={() => {
+        if (!isKeyboardModeActive && activeColumn === "workspace") {
+          if (workspace.find((b) => b?.id === selectedBlockId)) {
+            // onSelectBlock(null); // Optionally deselect on leaving column, or let Game.tsx handle it.
+          }
+        }
+      }}
+    >
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-2">
           {Array.from({ length: maxBlocks }).map((_, slotIndex) => {
@@ -196,25 +211,19 @@ const WorkspaceArea = ({
             const ghostDataForDisplay = blockToMoveInfo?.sourceData || null;
 
             if (blockInSlot) {
-              const isSelectedByGlobalId =
+              const isGloballySelected =
                 blockInSlot.id === selectedBlockId && !blockToMoveInfo;
 
               let isHighlightedByKeyboard = false;
               if (
                 activeColumn === "workspace" &&
                 isKeyboardModeActive &&
-                !blockToMoveInfo
+                !blockToMoveInfo &&
+                selectedIndex >= 0 &&
+                selectedIndex < denseWorkspaceBlocks.length &&
+                denseWorkspaceBlocks[selectedIndex]?.id === blockInSlot.id
               ) {
-                if (
-                  selectedIndex >= 0 &&
-                  selectedIndex < denseWorkspaceBlocks.length
-                ) {
-                  if (
-                    denseWorkspaceBlocks[selectedIndex]?.id === blockInSlot.id
-                  ) {
-                    isHighlightedByKeyboard = true;
-                  }
-                }
+                isHighlightedByKeyboard = true;
               }
 
               const isMarked =
@@ -222,7 +231,15 @@ const WorkspaceArea = ({
                 blockToMoveInfo?.sourceColumn === "workspace";
 
               return (
-                <div key={blockInSlot.id} className="relative">
+                <div
+                  key={blockInSlot.id}
+                  className="relative"
+                  onMouseEnter={() => {
+                    if (!isKeyboardModeActive && activeColumn === "workspace") {
+                      onSelectBlock(blockInSlot.id);
+                    }
+                  }}
+                >
                   {isGhostTargetForBlockHere && ghostDataForDisplay && (
                     <div className="block-ghost-preview">
                       <div className="font-mono terminal-text">
@@ -233,8 +250,9 @@ const WorkspaceArea = ({
                   <WorkspaceBlockItem
                     block={blockInSlot}
                     slotIndex={slotIndex}
-                    isSelected={isSelectedByGlobalId && !isMarked}
+                    isSelected={isGloballySelected && !isMarked}
                     isKeyboardHighlighted={isHighlightedByKeyboard && !isMarked}
+                    isKeyboardModeActive={isKeyboardModeActive}
                     isMarkedForMove={isMarked}
                     isGhostDropTarget={isGhostTargetForBlockHere ?? false}
                     isDndDropTarget={

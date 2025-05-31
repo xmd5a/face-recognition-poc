@@ -143,6 +143,9 @@ const Game = ({
     null
   );
 
+  // useRef to keep track of the last block ID hovered by mouse to avoid redundant selections
+  const lastHoveredBlockIdByMouse = useRef<string | null>(null);
+
   const handleAvailableSlotsChange = useCallback(
     (newSlots: (Block | null)[]) => {
       actions.setAvailableBlockSlots(newSlots);
@@ -175,6 +178,9 @@ const Game = ({
     isDraggingDnd: !!activeId,
     justDraggedBlockId,
     setJustDraggedBlockId,
+    currentBlocksCount,
+    isCompiling,
+    canCompileAfterAttempt,
   });
 
   // Effect to handle active column changes
@@ -207,29 +213,54 @@ const Game = ({
       if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
         return;
       }
-      // Only hide cursor if not actively dragging with mouse (activeId from dnd-kit)
       if (!activeId) {
-        setIsMouseCursorVisible(false);
+        // Not during D&D drag
+        if (isMouseCursorVisible) {
+          setIsMouseCursorVisible(false); // Switch to keyboard mode
+        }
       }
     };
 
-    const handleMouseMove = () => {
-      // Zawsze pokazuj kursor myszy, gdy się rusza
+    const handleMouseMove = (event: MouseEvent) => {
       if (!isMouseCursorVisible) {
-        // Ustaw tylko jeśli faktycznie się zmienia
-        setIsMouseCursorVisible(true);
+        // If currently in keyboard mode
+        setIsMouseCursorVisible(true); // Switch to mouse mode
       }
 
-      // Jeśli byliśmy w trybie przenoszenia bloków klawiaturą (blockToMoveInfo istnieje)
-      // i mysz została ruszona, anuluj ten tryb.
-      if (blockToMoveInfo) {
-        setBlockToMoveInfo(null);
-        setGhostTargetInfo(null);
-        // Nie ustawiaj tutaj activeColumn ani selectedBlockId.
-        // useKeyboardNavigation powinien sam "zauważyć", że blockToMoveInfo zniknęło
-        // i odpowiednio zareagować.
-        // Ustawienie isMouseCursorVisible na true powinno wyłączyć tryb klawiatury,
-        // co jest sygnałem dla useKeyboardNavigation.
+      // If in mouse mode, handle block selection by hover
+      if (isMouseCursorVisible && !activeId) {
+        // Ensure mouse mode is truly active and not D&D dragging
+        let currentlyHoveredBlockId: string | null = null;
+        const targetElement = event.target as HTMLElement;
+
+        // Check if hovering over a BlockItem in AvailableBlocks
+        const availableBlockElement = targetElement.closest("[data-block-id]");
+        if (availableBlockElement && activeColumn === "blocks") {
+          // Ensure we are in the "blocks" column context
+          currentlyHoveredBlockId =
+            availableBlockElement.getAttribute("data-block-id");
+        } else {
+          // Check if hovering over a WorkspaceBlockItem
+          // WorkspaceBlockItem already calls onSelectBlock on its own mouseEnter,
+          // so we might not need explicit handling here unless that proves insufficient.
+          // For now, let's focus on AvailableBlocks consistency.
+        }
+
+        // Only update if the hovered block has changed
+        if (lastHoveredBlockIdByMouse.current !== currentlyHoveredBlockId) {
+          if (currentlyHoveredBlockId) {
+            actions.selectBlock(currentlyHoveredBlockId);
+          } else {
+            // If mouse is not over any specific block in the active column,
+            // but still in a column region, deselect.
+            // More precise deselection might be on column MouseLeave in GameLayout or here.
+            if (activeColumn === "blocks" && !availableBlockElement) {
+              actions.selectBlock(null);
+            }
+            // Similar logic could be added for workspace if its items don't self-manage hover well enough
+          }
+          lastHoveredBlockIdByMouse.current = currentlyHoveredBlockId;
+        }
       }
     };
 
@@ -247,15 +278,10 @@ const Game = ({
       document.body.classList.remove("keyboard-mode-active");
     };
   }, [
-    activeId, // To prevent hiding cursor during dnd drag
-    // Zależności zredukowane do tych faktycznie używanych przez uproszczony handleMouseMove i handleKeyDown
-    isMouseCursorVisible, // Używane w handleMouseMove
-    blockToMoveInfo, // Używane w handleMouseMove
-    setBlockToMoveInfo, // Używane w handleMouseMove
-    setGhostTargetInfo, // Używane w handleMouseMove
-    // setActiveColumn, // Już nie używane bezpośrednio w tym efekcie po zmianie
-    // actions, // Już nie używane bezpośrednio w tym efekcie po zmianie
-    // availableBlockSlots // Już nie używane bezpośrednio w tym efekcie po zmianie
+    activeId,
+    isMouseCursorVisible,
+    actions,
+    activeColumn, // Added activeColumn dependency
   ]);
 
   useEffect(() => {
@@ -286,13 +312,18 @@ const Game = ({
       document.body.style.cursor = "none";
     }
 
-    if (
-      prevIsMouseCursorVisibleRef.current === false &&
-      isMouseCursorVisible === true
-    ) {
+    const prevModeMouse = prevIsMouseCursorVisibleRef.current;
+    const currentModeMouse = isMouseCursorVisible;
+
+    if (prevModeMouse !== undefined && prevModeMouse !== currentModeMouse) {
       actions.selectBlock(null);
+      lastHoveredBlockIdByMouse.current = null; // Reset last hovered ID on mode switch
+      if (currentModeMouse === true && blockToMoveInfo) {
+        setBlockToMoveInfo(null);
+        setGhostTargetInfo(null);
+      }
     }
-    prevIsMouseCursorVisibleRef.current = isMouseCursorVisible;
+    prevIsMouseCursorVisibleRef.current = currentModeMouse;
 
     return () => {
       const existingStyleTag = document.getElementById(styleTagId);
@@ -301,7 +332,13 @@ const Game = ({
       }
       document.body.style.cursor = "auto";
     };
-  }, [isMouseCursorVisible, actions]);
+  }, [
+    isMouseCursorVisible,
+    actions,
+    blockToMoveInfo,
+    setBlockToMoveInfo,
+    setGhostTargetInfo,
+  ]);
 
   useEffect(() => {
     if (isKeyboardModeActive) {
@@ -606,54 +643,117 @@ const Game = ({
         String(over.id) === "available-sortable")
     ) {
       let targetSlotIndexAvailable: number = -1;
-      // Determine targetSlotIndexAvailable (similar to SCENARIO 1's newIndex logic)
-      if (overData?.type === "block-list-item" && overData.blockId) {
-        targetSlotIndexAvailable = availableBlockSlots.findIndex(
-          (b) => b?.id === overData.blockId
+      const overIdStr = String(over.id);
+
+      // Prioritize specific ID patterns first
+      if (overIdStr.startsWith("block-list-item-drop-")) {
+        // Dropping on BlockItem's specific droppable ID
+        const targetBlockIdInAvailable = overIdStr.replace(
+          "block-list-item-drop-",
+          ""
         );
-      } else if (
-        overData?.type === "block-list-slot" &&
-        typeof overData.slotIndex === "number"
-      ) {
-        targetSlotIndexAvailable = overData.slotIndex;
-      } else if (String(over.id).startsWith("block-list-placeholder-")) {
+        targetSlotIndexAvailable = availableBlockSlots.findIndex(
+          (b) => b?.id === targetBlockIdInAvailable
+        );
+      } else if (overIdStr.startsWith("block-list-placeholder-")) {
+        // Dropping on PlaceholderItem's direct ID
         try {
           targetSlotIndexAvailable = parseInt(
-            String(over.id).split("-").pop() || "-1",
+            overIdStr.split("-").pop() || "-1",
             10
           );
         } catch {
           /* ignore */
         }
-      } else if (String(over.id) === "available-sortable") {
+      }
+      // Then check overData types
+      else if (overData?.type === "block-list-slot") {
+        // Data from useDroppable of PlaceholderItem OR BlockItem
+        if (overData.isPlaceholder && typeof overData.slotIndex === "number") {
+          // It's a PlaceholderItem
+          targetSlotIndexAvailable = overData.slotIndex;
+        } else if (!overData.isPlaceholder && overData.blockId) {
+          // It's a BlockItem's droppable area
+          targetSlotIndexAvailable = availableBlockSlots.findIndex(
+            (b) => b?.id === overData.blockId
+          );
+        }
+      } else if (overData?.type === "block-list-item" && overData.block?.id) {
+        // Data from useSortable of BlockItem (less ideal target, but fallback)
+        targetSlotIndexAvailable = availableBlockSlots.findIndex(
+          (b) => b?.id === overData.block.id
+        );
+      } else if (overIdStr === "available-sortable") {
+        // Dropping on container
         targetSlotIndexAvailable = availableBlockSlots.findIndex(
           (s) => s === null
-        ); // First empty slot
+        );
         if (targetSlotIndexAvailable === -1)
-          targetSlotIndexAvailable = availableBlockSlots.length; // Append if no empty slot (if list can grow)
+          targetSlotIndexAvailable = availableBlockSlots.length;
       }
-      // Ensure targetSlotIndexAvailable is valid for availableBlockSlots, considering it might not be fixed size
+
       if (targetSlotIndexAvailable === -1) {
-        // Fallback: try to append if no specific slot found
-        targetSlotIndexAvailable = availableBlockSlots.length;
+        console.warn(
+          "[DragEnd - Ws to Avail] Could not determine target slot in AvailableBlocks."
+        );
+        return;
       }
 
       const newAvailableSlots = [...availableBlockSlots];
-      // Logic to place: if slot is empty or replacing, or inserting
-      if (
-        targetSlotIndexAvailable < newAvailableSlots.length &&
-        newAvailableSlots[targetSlotIndexAvailable] === null
-      ) {
-        newAvailableSlots[targetSlotIndexAvailable] = draggedBlock;
-      } else {
-        newAvailableSlots.splice(targetSlotIndexAvailable, 0, draggedBlock);
+      const newWorkspace = [...workspace];
+      const originalIndexInWorkspace = newWorkspace.findIndex(
+        (b) => b?.id === draggedBlock.id
+      );
+
+      if (originalIndexInWorkspace === -1) {
+        console.error(
+          "[DragEnd - Ws to Avail] Dragged block not found in workspace for removal."
+        );
+        return;
       }
-      // Ensure availableBlockSlots doesn't exceed its own capacity if it has one.
+
+      const blockAtTargetInAvailable =
+        newAvailableSlots[targetSlotIndexAvailable];
+
+      console.log("[DragEnd - Ws to Avail] Pre-decision:", {
+        targetSlotIndexAvailable,
+        blockAtTargetInAvailableId: blockAtTargetInAvailable?.id,
+        isTargetSlotInBounds:
+          targetSlotIndexAvailable < newAvailableSlots.length,
+        draggedBlockId: draggedBlock.id,
+        originalIndexInWorkspace,
+      });
+
+      if (
+        blockAtTargetInAvailable &&
+        targetSlotIndexAvailable < newAvailableSlots.length
+      ) {
+        // SWAP scenario
+        console.log(
+          "[DragEnd - Ws to Avail] Performing SWAP with Available Block."
+        );
+        newAvailableSlots[targetSlotIndexAvailable] = draggedBlock; // Place workspace block in available slot
+        newWorkspace[originalIndexInWorkspace] = blockAtTargetInAvailable; // Place available block in workspace slot
+      } else {
+        // MOVE to empty/placeholder in AvailableBlocks, or append
+        console.log(
+          "[DragEnd - Ws to Avail] Moving to empty/placeholder or appending in Available."
+        );
+        if (
+          targetSlotIndexAvailable < newAvailableSlots.length &&
+          newAvailableSlots[targetSlotIndexAvailable] === null
+        ) {
+          newAvailableSlots[targetSlotIndexAvailable] = draggedBlock; // Place in empty slot
+        } else {
+          // This case handles appending or inserting if targetSlotIndexAvailable is at the end or beyond current items
+          // Ensure not to exceed any max capacity if availableBlockSlots has one.
+          // For now, we assume it can grow or targetSlotIndexAvailable is valid for splice.
+          newAvailableSlots.splice(targetSlotIndexAvailable, 0, draggedBlock);
+        }
+        newWorkspace[originalIndexInWorkspace] = null; // Clear original workspace slot
+      }
 
       actions.setAvailableBlockSlots(newAvailableSlots);
-      const newWorkspace = workspace.map((b) =>
-        b?.id === draggedBlock.id ? null : b
-      );
       actions.setWorkspace(newWorkspace);
       actions.selectBlock(draggedBlock.id);
       setJustDraggedBlockId(draggedBlock.id);
@@ -664,16 +764,18 @@ const Game = ({
     if (
       sourceType === "available" &&
       (String(over.id).startsWith("placeholder-") ||
-        overData?.type === "workspace-block-droppable" ||
-        overData?.type === "workspace-block" ||
+        overData?.type === "workspace-block-droppable" || // Dropping ON another workspace block
         String(over.id) === "workspace")
     ) {
+      // Dropping on workspace container
+
       let targetIndexInWorkspace: number = -1;
-      // Determine targetIndexInWorkspace (similar to SCENARIO 2's newIndex logic)
-      if (String(over.id).startsWith("placeholder-")) {
+      const overIdStr = String(over.id);
+
+      if (overIdStr.startsWith("placeholder-")) {
         try {
           targetIndexInWorkspace = parseInt(
-            String(over.id).split("-").pop() || "-1",
+            overIdStr.split("-").pop() || "-1",
             10
           );
         } catch {
@@ -683,36 +785,72 @@ const Game = ({
         overData?.type === "workspace-block-droppable" &&
         typeof overData.index === "number"
       ) {
-        targetIndexInWorkspace = overData.index;
+        // This is when we drop ON another WorkspaceBlockItem which is a droppable target
+        targetIndexInWorkspace = overData.index; // This is the slotIndex of the block being dropped ON
       } else if (String(over.id) === "workspace") {
-        targetIndexInWorkspace = workspace.findIndex((s) => s === null);
+        // Dropping on workspace container itself
+        targetIndexInWorkspace = workspace.findIndex((s) => s === null); // Find first empty slot
         if (
           targetIndexInWorkspace === -1 &&
           workspace.filter(Boolean).length < maxBlocks
         ) {
-          targetIndexInWorkspace = workspace.filter(Boolean).length; // Append if space
+          targetIndexInWorkspace = workspace.filter(Boolean).length; // Append if space available
         }
       }
 
-      if (targetIndexInWorkspace !== -1 && targetIndexInWorkspace < maxBlocks) {
-        const newWorkspace = [...workspace];
-        // If target is occupied, and it's not the same block moving to same spot, this implies overwriting or needing shift
-        // For now, simple placement. If newWorkspace[targetIndexInWorkspace] is not null, it will be overwritten.
-        // A more robust solution might shift items if not dropping on a placeholder.
-        newWorkspace[targetIndexInWorkspace] = draggedBlock;
-        actions.setWorkspace(newWorkspace);
-
-        const newAvailable = availableBlockSlots.map((b) =>
-          b?.id === draggedBlock.id ? null : b
-        );
-        actions.setAvailableBlockSlots(newAvailable);
-        actions.selectBlock(draggedBlock.id);
-        setJustDraggedBlockId(draggedBlock.id);
-      } else {
+      if (
+        targetIndexInWorkspace === -1 ||
+        targetIndexInWorkspace >= maxBlocks
+      ) {
         console.warn(
-          "Could not determine valid target slot in Workspace or workspace full."
+          "[DragEnd - Avail to Ws] Could not determine valid target slot in Workspace or workspace full/invalid index.",
+          { targetIndexInWorkspace, maxBlocks }
         );
+        return;
       }
+
+      const newWorkspace = [...workspace];
+      const newAvailable = [...availableBlockSlots];
+      const originalIndexInAvailable = newAvailable.findIndex(
+        (b) => b?.id === draggedBlock.id
+      );
+
+      if (originalIndexInAvailable === -1) {
+        console.error(
+          "[DragEnd - Avail to Ws] Dragged block not found in availableBlockSlots for removal."
+        );
+        return;
+      }
+
+      const blockToSwapFromWorkspace = newWorkspace[targetIndexInWorkspace];
+
+      console.log("[DragEnd - Avail to Ws] Pre-decision:", {
+        targetIndexInWorkspace,
+        blockToSwapFromWorkspaceId: blockToSwapFromWorkspace?.id,
+        draggedBlockId: draggedBlock.id,
+        originalIndexInAvailable,
+      });
+
+      if (blockToSwapFromWorkspace) {
+        // SWAP scenario: Target in workspace is an existing block
+        console.log(
+          "[DragEnd - Avail to Ws] Performing SWAP with Workspace Block."
+        );
+        newWorkspace[targetIndexInWorkspace] = draggedBlock; // Place available block in workspace slot
+        newAvailable[originalIndexInAvailable] = blockToSwapFromWorkspace; // Place workspace block in available slot
+      } else {
+        // MOVE to empty/placeholder in Workspace
+        console.log(
+          "[DragEnd - Avail to Ws] Moving to empty/placeholder in Workspace."
+        );
+        newWorkspace[targetIndexInWorkspace] = draggedBlock;
+        newAvailable[originalIndexInAvailable] = null; // Clear original available slot
+      }
+
+      actions.setWorkspace(newWorkspace);
+      actions.setAvailableBlockSlots(newAvailable);
+      actions.selectBlock(draggedBlock.id);
+      setJustDraggedBlockId(draggedBlock.id);
       return;
     }
 
@@ -780,7 +918,9 @@ const Game = ({
                   selectedIndex={
                     activeColumn === "blocks" ? indices.blocks : -1
                   }
-                  onBlockSelect={(block) => actions.selectBlock(block.id)}
+                  onBlockSelect={(block) =>
+                    actions.selectBlock(block ? block.id : null)
+                  }
                   onBlockMove={(blockMoved) => {
                     const newWs = [...workspace];
                     const firstEmptyIdx = newWs.findIndex((b) => b === null);
