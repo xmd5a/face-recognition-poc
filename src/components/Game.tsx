@@ -611,7 +611,7 @@ const Game = ({
           }}
         />
 
-        <div className="flex-1 grid grid-cols-3 gap-4 mb-8">
+        <div className="flex-1 grid grid-cols-3 mb-8">
           <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
@@ -621,7 +621,7 @@ const Game = ({
             <div
               id="available"
               data-droppable="available"
-              className={`bg-black/20 rounded-lg transition-colors ${
+              className={`bg-black/20 transition-colors ${
                 activeColumn === "blocks" ? "column-active" : "column-inactive"
               } relative`}
               onMouseEnter={() => {
@@ -665,7 +665,7 @@ const Game = ({
             <div
               id="workspace"
               data-droppable="workspace"
-              className={`bg-black/20 rounded-lg transition-colors ${
+              className={`bg-black/20transition-colors ${
                 activeColumn === "workspace"
                   ? "column-active"
                   : "column-inactive"
@@ -688,7 +688,7 @@ const Game = ({
               />
             </div>
 
-            <div className="bg-black/20 rounded-lg transition-colors pointer-events-none">
+            <div className="bg-black/20 transition-colors pointer-events-none">
               <div className="p-4">
                 <div className="prose prose-invert prose-sm max-w-none">
                   <ReactMarkdown>{hint}</ReactMarkdown>
