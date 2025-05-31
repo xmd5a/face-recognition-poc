@@ -1,9 +1,11 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
+import { useDroppable } from "@dnd-kit/core";
 // Removed: import type { Block } from "./BlockList";
 // Assuming BlockToMoveInfo and GhostTargetInfo types are available globally or imported
 import type { BlockToMoveInfo, GhostTargetInfo } from "./Game";
+// import { useDroppable } from '@dnd-kit/core'; // Removed as PlaceholderItem does not use it now
 
 export interface Block {
   // This is the local declaration
@@ -13,6 +15,58 @@ export interface Block {
   command: string;
 }
 
+// --- Placeholder Component (adapted from WorkspaceArea) ---
+interface PlaceholderProps {
+  slotIndex: number; // Renamed from index to avoid conflict
+  // isActive: boolean; // Placeholder in BlockList might not need active drag-over state from dnd-kit like workspace
+  isGhostDropTarget: boolean;
+  ghostBlockData: Block | null;
+}
+
+const PlaceholderItem = ({
+  // Renamed to PlaceholderItem to avoid conflict if a global Placeholder exists
+  slotIndex,
+  isGhostDropTarget,
+  ghostBlockData,
+}: PlaceholderProps) => {
+  // Placeholders in BlockList are now droppable targets
+  const { setNodeRef } = useDroppable({
+    id: `block-list-placeholder-${slotIndex}`,
+    data: {
+      // Pass data to identify the target
+      type: "block-list-slot",
+      accepts: ["workspace-block"], // Specify what it accepts
+      slotIndex: slotIndex,
+      isPlaceholder: true,
+    },
+  });
+
+  return (
+    <div
+      ref={setNodeRef} // MODIFIED
+      className={`p-3 rounded transition-all relative border-2 border-dashed 
+                  ${
+                    isGhostDropTarget
+                      ? "ghost-drop-target"
+                      : "border-green-400/10"
+                  }
+                  h-[60px] flex items-center justify-center`} // Ensure consistent height
+      data-slot-index={slotIndex} // Added data attribute for potential use or debugging
+    >
+      {isGhostDropTarget && ghostBlockData ? (
+        <div className="font-mono terminal-text opacity-70">
+          {ghostBlockData.name}
+        </div>
+      ) : (
+        <div className="font-mono terminal-text opacity-30 text-sm">
+          empty slot
+        </div>
+      )}
+    </div>
+  );
+};
+// --- End Placeholder Component ---
+
 interface BlockItemProps {
   block: Block;
   isSelected: boolean;
@@ -20,6 +74,7 @@ interface BlockItemProps {
   isMouseHovered: boolean;
   isKeyboardModeActive: boolean;
   isMarkedForMove: boolean;
+  isGhostDropTarget: boolean; // Added for styling if it's a block being targeted for a swap
   onSelect: (block: Block) => void;
   onDoubleClick?: (block: Block) => void;
 }
@@ -31,17 +86,51 @@ const BlockItem = ({
   isMouseHovered,
   isKeyboardModeActive,
   isMarkedForMove,
+  isGhostDropTarget, // Added
   onSelect,
   onDoubleClick,
 }: BlockItemProps) => {
   const {
     attributes,
     listeners,
-    setNodeRef,
+    setNodeRef: sortableSetNodeRef,
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: block.id });
+  } = useSortable({
+    id: block.id,
+    data: {
+      type: "block-list-item",
+      block: block,
+    },
+  });
+
+  // Make BlockItem a droppable target as well
+  const { setNodeRef: droppableSetNodeRef } = useDroppable({
+    id: `block-list-item-drop-${block.id}`, // Unique ID for dropping ON this item
+    data: {
+      // Pass data to identify the target
+      type: "block-list-slot",
+      accepts: ["workspace-block"], // Specify what it accepts
+      blockId: block.id, // To know which block is being targeted
+      isPlaceholder: false,
+      // We'll need to find the slotIndex for this block if we drop on it
+      // This will be handled in onDragEnd by finding the block in blockSlots
+    },
+  });
+
+  // Combine refs if necessary or decide which one takes precedence.
+  // For now, sortableSetNodeRef is for the div that is being dragged.
+  // droppableSetNodeRef would be for making the area droppable.
+  // Let's wrap BlockItem with a droppable div or apply droppable to the same div.
+  // Applying to the same div means we need a way to combine refs or use one.
+  // Let's use sortableSetNodeRef for the draggable aspect and attach droppableSetNodeRef to the same node.
+  // This is a common pattern: a single element can be both draggable and a drop target.
+
+  const setCombinedNodeRef = (node: HTMLElement | null) => {
+    sortableSetNodeRef(node);
+    droppableSetNodeRef(node);
+  };
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -57,15 +146,18 @@ const BlockItem = ({
     blockClass = "block-selected";
   }
 
+  const combinedClasses = `
+    p-3 rounded cursor-move transition-all relative
+    ${isDragging ? "opacity-50 z-50 shadow-lg" : "opacity-100"}
+    ${blockClass}
+    ${isGhostDropTarget ? "ghost-drop-target" : ""}
+  `;
+
   return (
     <div
-      ref={setNodeRef}
+      ref={setCombinedNodeRef} // MODIFIED
       style={style}
-      className={`
-        p-3 rounded cursor-move transition-all relative
-        ${isDragging ? "opacity-50 z-50 shadow-lg" : "opacity-100"}
-        ${blockClass}
-      `}
+      className={combinedClasses.trim()}
       onClick={() => onSelect(block)}
       onDoubleClick={() => onDoubleClick?.(block)}
       onKeyDown={(e) => {
@@ -109,11 +201,11 @@ const BlockDescription = ({ block }: BlockDescriptionProps) => {
 };
 
 interface BlockListProps {
-  blocks: Block[];
+  blockSlots: (Block | null)[]; // MODIFIED: from blocks: Block[]
   selectedBlockId: string | null;
-  selectedIndex: number;
+  selectedIndex: number; // This is index in DENSE list of blocks
   onBlockSelect: (block: Block) => void;
-  onBlockMove?: (block: Block) => void;
+  onBlockMove?: (block: Block) => void; // This might need re-evaluation for sparse list
   isKeyboardModeActive: boolean;
   activeColumn: string;
   blockToMoveInfo: BlockToMoveInfo | null;
@@ -121,44 +213,61 @@ interface BlockListProps {
 }
 
 const BlockList = ({
-  blocks,
+  blockSlots, // MODIFIED
   selectedBlockId,
-  selectedIndex,
+  selectedIndex, // Index in DENSE list of actual blocks from this column
   onBlockSelect,
   onBlockMove,
   isKeyboardModeActive,
   activeColumn,
-  blockToMoveInfo, // Now used
-  ghostTargetInfo, // Now used
+  blockToMoveInfo,
+  ghostTargetInfo,
 }: BlockListProps) => {
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
 
-  const selectedBlockDetails =
-    blocks.find((block) => block.id === selectedBlockId) || null;
-  const hoveredBlockDetails =
-    blocks.find((b) => b.id === hoveredBlockId) || null;
+  const denseBlocks = blockSlots.filter(Boolean) as Block[];
 
-  const blockMarkedForMoveInThisColumn =
-    blockToMoveInfo && blockToMoveInfo.sourceColumn === "blocks"
+  const selectedBlockDetails =
+    denseBlocks.find((b) => b.id === selectedBlockId) || null;
+  const hoveredBlockDetails =
+    denseBlocks.find((b) => b.id === hoveredBlockId) || null;
+
+  const blockMarkedForMoveInThisColumnData =
+    blockToMoveInfo?.sourceColumn === "blocks"
       ? blockToMoveInfo.sourceData
       : null;
 
+  // This might need adjustment if onBlockMove is triggered from a placeholder context
   const handleBlockMove = (block: Block) => {
     if (onBlockMove) {
       onBlockMove(block);
-      const currentIndex = blocks.findIndex((b) => b.id === block.id);
-      const nextBlock = blocks[currentIndex + 1] || blocks[0];
-      if (nextBlock) {
-        onBlockSelect(nextBlock);
+      // Find next block in DENSE list for selection after move
+      const currentIndexInDense = denseBlocks.findIndex(
+        (b) => b.id === block.id
+      );
+      if (currentIndexInDense !== -1) {
+        const nextBlockInDense =
+          denseBlocks[currentIndexInDense + 1] || denseBlocks[0];
+        if (nextBlockInDense) {
+          onBlockSelect(nextBlockInDense);
+        }
       }
     }
   };
 
   const displayedBlockForDescription =
-    blockMarkedForMoveInThisColumn ||
+    blockMarkedForMoveInThisColumnData || // If a block from this list is marked for move, show its desc
     (isKeyboardModeActive
-      ? selectedBlockDetails
-      : hoveredBlockDetails || selectedBlockDetails);
+      ? selectedBlockDetails // selected via keyboard (refers to dense list)
+      : hoveredBlockDetails || selectedBlockDetails); // hovered or selected via mouse
+
+  // Get the actual block that is highlighted by keyboard (based on selectedIndex in dense list)
+  const keyboardHighlightedBlock =
+    isKeyboardModeActive &&
+    selectedIndex >= 0 &&
+    selectedIndex < denseBlocks.length
+      ? denseBlocks[selectedIndex]
+      : null;
 
   return (
     <div className="h-full flex flex-col">
@@ -170,66 +279,86 @@ const BlockList = ({
           }
         }}
       >
-        {blocks.map((block, index) => {
-          const isSelected =
-            activeColumn === "blocks" &&
-            block.id === selectedBlockId &&
-            !blockToMoveInfo; // Don't show as normally selected if a move is active
-          const isKeyboardHighlighted =
-            activeColumn === "blocks" &&
-            isKeyboardModeActive &&
-            index === selectedIndex &&
-            !blockToMoveInfo;
-          const isMouseHovered =
-            !isKeyboardModeActive &&
-            hoveredBlockId === block.id &&
-            activeColumn === "blocks" &&
-            !blockToMoveInfo;
+        {blockSlots.map((slotItem, slotIndex) => {
+          if (slotItem) {
+            // It's a Block
+            const block = slotItem;
+            const isSelected =
+              activeColumn === "blocks" &&
+              block.id === selectedBlockId &&
+              !blockToMoveInfo;
+            const isKeyboardHighlighted =
+              activeColumn === "blocks" &&
+              isKeyboardModeActive &&
+              keyboardHighlightedBlock?.id === block.id && // Compare with the actual highlighted block
+              !blockToMoveInfo;
+            const isMouseHovered =
+              !isKeyboardModeActive &&
+              hoveredBlockId === block.id &&
+              activeColumn === "blocks" &&
+              !blockToMoveInfo;
+            const isMarkedForMove =
+              blockToMoveInfo?.sourceColumn === "blocks" &&
+              blockToMoveInfo?.id === block.id;
 
-          // A block is marked for move if it's the source block of an active move operation and we are in its original column.
-          const isMarked =
-            blockToMoveInfo?.id === block.id &&
-            blockToMoveInfo?.sourceColumn === "blocks";
+            const isThisBlockGhostTarget =
+              ghostTargetInfo?.targetColumn === "blocks" &&
+              ghostTargetInfo?.targetIndex === slotIndex && // slotIndex is the key here
+              !ghostTargetInfo?.isTargetPlaceholder;
 
-          // A ghost of blockToMoveInfo.sourceData should appear over this item if this item is the ghostTarget
-          const isGhostTargetHere =
-            ghostTargetInfo?.targetColumn === "blocks" &&
-            ghostTargetInfo?.targetIndex === index &&
-            !ghostTargetInfo?.isTargetPlaceholder; // In BlockList, target is always an existing block for swap
-
-          return (
-            <div
-              key={block.id}
-              className="relative" // Added relative for positioning ghost
-              onMouseEnter={() => {
-                if (!isKeyboardModeActive && activeColumn === "blocks") {
-                  setHoveredBlockId(block.id);
-                  if (!blockToMoveInfo) onBlockSelect(block);
-                }
-              }}
-            >
-              {isGhostTargetHere && blockToMoveInfo && (
-                <div
-                  className="absolute inset-0 m-1 p-3 rounded border-2 border-dashed border-yellow-400/70 bg-yellow-500/10 z-20 flex items-center justify-center pointer-events-none"
-                  // Style for ghost block preview
-                >
-                  <div className="font-mono terminal-text opacity-70">
-                    {blockToMoveInfo.sourceData.name}
+            return (
+              <div
+                key={block.id} // Use block.id for sortable item key
+                className="relative"
+                onMouseEnter={() => {
+                  if (!isKeyboardModeActive && activeColumn === "blocks") {
+                    setHoveredBlockId(block.id);
+                    if (!blockToMoveInfo) onBlockSelect(block);
+                  }
+                }}
+              >
+                {isThisBlockGhostTarget && blockToMoveInfo?.sourceData && (
+                  <div className="block-ghost-preview">
+                    <div className="font-mono terminal-text">
+                      {blockToMoveInfo.sourceData.name}
+                    </div>
                   </div>
-                </div>
-              )}
-              <BlockItem
-                block={block}
-                isSelected={isSelected && !isMarked} // Don't apply .block-selected if it's marked for move
-                isKeyboardHighlighted={isKeyboardHighlighted && !isMarked}
-                isMouseHovered={isMouseHovered && !isMarked}
-                isKeyboardModeActive={isKeyboardModeActive}
-                isMarkedForMove={isMarked}
-                onSelect={onBlockSelect}
-                onDoubleClick={handleBlockMove}
+                )}
+                <BlockItem
+                  block={block}
+                  isSelected={isSelected && !isMarkedForMove}
+                  isKeyboardHighlighted={
+                    isKeyboardHighlighted && !isMarkedForMove
+                  }
+                  isMouseHovered={isMouseHovered && !isMarkedForMove}
+                  isKeyboardModeActive={isKeyboardModeActive}
+                  isMarkedForMove={isMarkedForMove}
+                  isGhostDropTarget={isThisBlockGhostTarget} // Pass this for styling
+                  onSelect={onBlockSelect}
+                  onDoubleClick={handleBlockMove}
+                />
+              </div>
+            );
+          } else {
+            // It's a Placeholder slot
+            const isThisPlaceholderGhostTarget =
+              ghostTargetInfo?.targetColumn === "blocks" &&
+              ghostTargetInfo?.targetIndex === slotIndex && // slotIndex is the key
+              ghostTargetInfo?.isTargetPlaceholder;
+
+            return (
+              <PlaceholderItem
+                key={`block-slot-placeholder-${slotIndex}`}
+                slotIndex={slotIndex}
+                isGhostDropTarget={isThisPlaceholderGhostTarget}
+                ghostBlockData={
+                  isThisPlaceholderGhostTarget
+                    ? blockToMoveInfo?.sourceData || null
+                    : null
+                }
               />
-            </div>
-          );
+            );
+          }
         })}
       </div>
       <BlockDescription block={displayedBlockForDescription} />

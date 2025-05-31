@@ -6,14 +6,14 @@ interface GameState {
   selectedBlockId: string | null;
   isCompiling: boolean;
   errors: string[];
-  availableBlocks: Block[];
-  levelHint: string; // Added for potential future use
+  availableBlockSlots: (Block | null)[];
+  levelHint: string;
 }
 
 interface UseGameStateProps {
   initialAvailableBlocks: Block[];
   maxBlocks: number;
-  hint?: string; // Added for potential future use
+  hint?: string;
 }
 
 const useGameState = ({
@@ -26,7 +26,9 @@ const useGameState = ({
     selectedBlockId: null,
     isCompiling: false,
     errors: [],
-    availableBlocks: initialAvailableBlocks,
+    availableBlockSlots: initialAvailableBlocks.map((b) =>
+      b ? { ...b } : null
+    ),
     levelHint: hint,
   }));
 
@@ -34,14 +36,14 @@ const useGameState = ({
     setGameState((prev) => ({ ...prev, selectedBlockId: blockId }));
   }, []);
 
-  const setAvailableBlocks = useCallback((newBlocks: Block[]) => {
-    setGameState((prev) => ({ ...prev, availableBlocks: newBlocks }));
+  const setAvailableBlockSlots = useCallback((newSlots: (Block | null)[]) => {
+    setGameState((prev) => ({ ...prev, availableBlockSlots: newSlots }));
   }, []);
 
   const setWorkspace = useCallback(
     (newWorkspace: (Block | null)[]) => {
       setGameState((prev) => {
-        const finalWs = new Array(prev.workspace.length).fill(null);
+        const finalWs = new Array(maxBlocks).fill(null);
         newWorkspace.forEach((block, index) => {
           if (index < finalWs.length) {
             finalWs[index] = block;
@@ -51,32 +53,35 @@ const useGameState = ({
         const workspaceBlockIds = new Set(
           finalWs.filter(Boolean).map((b) => b!.id)
         );
-        const newFilteredAvailableBlocks = initialAvailableBlocks.filter(
-          (ab) => !workspaceBlockIds.has(ab.id)
-        );
+        let newSelectedBlockId = prev.selectedBlockId;
+        if (
+          prev.selectedBlockId &&
+          !workspaceBlockIds.has(prev.selectedBlockId)
+        ) {
+          const selectedInAvailableSlots = prev.availableBlockSlots.find(
+            (b) => b?.id === prev.selectedBlockId
+          );
+          if (!selectedInAvailableSlots) {
+            newSelectedBlockId = null;
+          }
+        }
 
         return {
           ...prev,
           workspace: finalWs,
-          availableBlocks: newFilteredAvailableBlocks,
-          selectedBlockId:
-            prev.selectedBlockId && workspaceBlockIds.has(prev.selectedBlockId)
-              ? prev.selectedBlockId
-              : null,
+          selectedBlockId: newSelectedBlockId,
         };
       });
     },
-    [initialAvailableBlocks, maxBlocks]
+    [maxBlocks]
   );
 
   const compile = useCallback(() => {
     setGameState((prev) => ({ ...prev, isCompiling: true, errors: [] }));
-    // Simulate compilation
     setTimeout(() => {
       const commands = gameState.workspace
         .filter(Boolean)
         .map((block) => block!.command);
-      // Basic validation example (can be expanded)
       if (commands.length !== maxBlocks) {
         setGameState((prev) => ({
           ...prev,
@@ -87,7 +92,6 @@ const useGameState = ({
         }));
         return;
       }
-      // Simulate success
       setGameState((prev) => ({
         ...prev,
         isCompiling: false,
@@ -102,7 +106,9 @@ const useGameState = ({
       selectedBlockId: null,
       isCompiling: false,
       errors: [],
-      availableBlocks: initialAvailableBlocks,
+      availableBlockSlots: initialAvailableBlocks.map((b) =>
+        b ? { ...b } : null
+      ),
       levelHint: hint,
     });
   }, [initialAvailableBlocks, maxBlocks, hint]);
@@ -113,7 +119,7 @@ const useGameState = ({
     actions: {
       selectBlock,
       setWorkspace,
-      setAvailableBlocks,
+      setAvailableBlockSlots,
       compile,
       reset,
     },

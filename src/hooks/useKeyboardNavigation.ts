@@ -5,12 +5,12 @@ import { type BlockToMoveInfo, type GhostTargetInfo } from "../components/Game";
 export type Column = "blocks" | "workspace";
 
 interface UseKeyboardNavigationProps {
-  availableBlocks: Block[];
+  availableBlockSlots: (Block | null)[];
   workspace: (Block | null)[];
   selectedBlockId: string | null;
   onBlockSelect: (block: Block | null) => void;
   onWorkspaceChange: (blocks: (Block | null)[]) => void;
-  onAvailableBlocksChange: (blocks: Block[]) => void;
+  onAvailableBlocksChange: (slots: (Block | null)[]) => void;
   onCompile: () => void;
   blockToMoveInfo: BlockToMoveInfo | null;
   setBlockToMoveInfo: React.Dispatch<
@@ -21,10 +21,13 @@ interface UseKeyboardNavigationProps {
     React.SetStateAction<GhostTargetInfo | null>
   >;
   maxBlocks: number;
+  isDraggingDnd: boolean;
+  justDraggedBlockId: string | null;
+  setJustDraggedBlockId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 export const useKeyboardNavigation = ({
-  availableBlocks,
+  availableBlockSlots,
   workspace,
   selectedBlockId,
   onBlockSelect,
@@ -36,6 +39,9 @@ export const useKeyboardNavigation = ({
   ghostTargetInfo,
   setGhostTargetInfo,
   maxBlocks,
+  isDraggingDnd,
+  justDraggedBlockId,
+  setJustDraggedBlockId,
 }: UseKeyboardNavigationProps) => {
   const [activeColumn, setActiveColumn] = useState<Column>("blocks");
   const [indices, setIndices] = useState({
@@ -48,11 +54,85 @@ export const useKeyboardNavigation = ({
   const blockSelectionTriggeredByHook = useRef(false);
 
   useEffect(() => {
+    if (isDraggingDnd) {
+      return;
+    }
+
+    if (justDraggedBlockId && justDraggedBlockId === selectedBlockId) {
+      let columnOfDraggedBlock: Column | null = null;
+      let indexInDenseListOfColumn = -1;
+
+      const availableDense = availableBlockSlots.filter(Boolean) as Block[];
+      const workspaceDense = workspace.filter(Boolean) as Block[];
+
+      const foundInAvailable = availableDense.find(
+        (b) => b.id === justDraggedBlockId
+      );
+      if (foundInAvailable) {
+        columnOfDraggedBlock = "blocks";
+        indexInDenseListOfColumn = availableDense.findIndex(
+          (b) => b.id === justDraggedBlockId
+        );
+      } else {
+        const foundInWorkspace = workspaceDense.find(
+          (b) => b.id === justDraggedBlockId
+        );
+        if (foundInWorkspace) {
+          columnOfDraggedBlock = "workspace";
+          indexInDenseListOfColumn = workspaceDense.findIndex(
+            (b) => b.id === justDraggedBlockId
+          );
+        }
+      }
+
+      if (columnOfDraggedBlock && indexInDenseListOfColumn !== -1) {
+        if (activeColumn !== columnOfDraggedBlock) {
+          setActiveColumn(columnOfDraggedBlock);
+        }
+        if (indices[columnOfDraggedBlock] !== indexInDenseListOfColumn) {
+          setIndices((prev) => ({
+            ...prev,
+            [columnOfDraggedBlock!]: indexInDenseListOfColumn,
+          }));
+        }
+      } else {
+        console.warn(
+          "useKeyboardNavigation: justDraggedBlockId was set, but block not found or mismatch with selectedBlockId.",
+          { justDraggedBlockId, selectedBlockId, activeColumn }
+        );
+      }
+      setJustDraggedBlockId(null);
+      return;
+    }
+    if (justDraggedBlockId) {
+      setJustDraggedBlockId(null);
+    }
+
+    if (!blockSelectionTriggeredByHook.current && selectedBlockId) {
+      const listForSync =
+        activeColumn === "blocks"
+          ? (availableBlockSlots.filter(Boolean) as Block[])
+          : (workspace.filter(Boolean) as Block[]);
+      const selectedIdxInList = listForSync.findIndex(
+        (b) => b.id === selectedBlockId
+      );
+
+      if (selectedIdxInList !== -1) {
+        if (indices[activeColumn] !== selectedIdxInList) {
+          setIndices((prev) => ({
+            ...prev,
+            [activeColumn]: selectedIdxInList,
+          }));
+        }
+        return;
+      }
+    }
+
     if (blockSelectionTriggeredByHook.current) {
       blockSelectionTriggeredByHook.current = false;
       const listForSync =
         activeColumn === "blocks"
-          ? availableBlocks
+          ? (availableBlockSlots.filter(Boolean) as Block[])
           : (workspace.filter(Boolean) as Block[]);
       const selectedIdx = listForSync.findIndex(
         (b) => b.id === selectedBlockId
@@ -76,7 +156,7 @@ export const useKeyboardNavigation = ({
           const denseList =
             activeColumn === "workspace"
               ? (workspace.filter(Boolean) as Block[])
-              : availableBlocks;
+              : (availableBlockSlots.filter(Boolean) as Block[]);
           const blockToSelect = denseList.find(
             (b) => b.id === ghostTargetInfo.targetBlockId
           );
@@ -94,7 +174,7 @@ export const useKeyboardNavigation = ({
         const denseTargetListForSelection =
           activeColumn === "workspace"
             ? (workspace.filter(Boolean) as Block[])
-            : availableBlocks;
+            : (availableBlockSlots.filter(Boolean) as Block[]);
 
         let foundTargetIndex = -1;
         let isPlaceholderTarget = false;
@@ -136,17 +216,36 @@ export const useKeyboardNavigation = ({
             }
           }
         } else {
-          if (availableBlocks.length > 0) {
-            let currentBlocksIndex = indices.blocks;
-            if (
-              currentBlocksIndex >= availableBlocks.length ||
-              currentBlocksIndex < 0
-            ) {
-              currentBlocksIndex = 0;
+          const firstEmptySlotInAvailable = availableBlockSlots.findIndex(
+            (slot) => slot === null
+          );
+          if (firstEmptySlotInAvailable !== -1) {
+            foundTargetIndex = firstEmptySlotInAvailable;
+            isPlaceholderTarget = true;
+          } else {
+            const denseAvailableBlocks = availableBlockSlots.filter(
+              Boolean
+            ) as Block[];
+            if (denseAvailableBlocks.length > 0) {
+              let currentBlocksDenseIndex = indices.blocks;
+              if (
+                currentBlocksDenseIndex >= denseAvailableBlocks.length ||
+                currentBlocksDenseIndex < 0
+              ) {
+                currentBlocksDenseIndex = 0;
+              }
+              const targetedBlock =
+                denseAvailableBlocks[currentBlocksDenseIndex];
+              if (targetedBlock) {
+                targetBlockEntityId = targetedBlock.id;
+                const rawIndex = availableBlockSlots.findIndex(
+                  (b) => b?.id === targetedBlock.id
+                );
+                if (rawIndex !== -1) foundTargetIndex = rawIndex;
+                else foundTargetIndex = -1;
+              } else foundTargetIndex = -1;
+              isPlaceholderTarget = false;
             }
-            foundTargetIndex = currentBlocksIndex;
-            isPlaceholderTarget = false;
-            targetBlockEntityId = availableBlocks[foundTargetIndex]?.id || null;
           }
         }
 
@@ -185,7 +284,7 @@ export const useKeyboardNavigation = ({
 
     const currentDenseList =
       activeColumn === "blocks"
-        ? availableBlocks
+        ? (availableBlockSlots.filter(Boolean) as Block[])
         : (workspace.filter(Boolean) as Block[]);
     let newIndexToSelect = indices[activeColumn];
 
@@ -232,7 +331,7 @@ export const useKeyboardNavigation = ({
     }
   }, [
     activeColumn,
-    availableBlocks,
+    availableBlockSlots,
     workspace,
     selectedBlockId,
     onBlockSelect,
@@ -241,6 +340,9 @@ export const useKeyboardNavigation = ({
     setGhostTargetInfo,
     maxBlocks,
     onAvailableBlocksChange,
+    isDraggingDnd,
+    justDraggedBlockId,
+    setJustDraggedBlockId,
   ]);
 
   useEffect(() => {
@@ -253,7 +355,7 @@ export const useKeyboardNavigation = ({
     (event: KeyboardEvent) => {
       const denseCurrentList =
         activeColumn === "blocks"
-          ? availableBlocks
+          ? (availableBlockSlots.filter(Boolean) as Block[])
           : (workspace.filter(Boolean) as Block[]);
 
       let currentIndexInDenseList = indices[activeColumn];
@@ -264,8 +366,24 @@ export const useKeyboardNavigation = ({
       ) {
         currentIndexInDenseList = denseCurrentList.length - 1;
       }
-      if (denseCurrentList.length === 0) {
+      if (
+        denseCurrentList.length === 0 &&
+        activeColumn === "blocks" &&
+        !blockToMoveInfo
+      ) {
+        // If available blocks list is empty (all placeholders) and not in move mode, no arrow key navigation
+      } else if (
+        denseCurrentList.length === 0 &&
+        activeColumn === "workspace" &&
+        !blockToMoveInfo
+      ) {
         currentIndexInDenseList = 0;
+      } else if (
+        denseCurrentList.length === 0 &&
+        blockToMoveInfo &&
+        activeColumn === "blocks"
+      ) {
+        // Allow navigation for ghost if target is blocks column and it is all placeholders
       }
 
       if (keyboardNavJustActivated && selectedBlockId) {
@@ -281,6 +399,7 @@ export const useKeyboardNavigation = ({
       let newDenseIndex = currentIndexInDenseList;
       const maxDenseIndex =
         denseCurrentList.length > 0 ? denseCurrentList.length - 1 : 0;
+      const maxAvailableSlots = availableBlockSlots.length;
 
       if (
         blockToMoveInfo &&
@@ -339,9 +458,44 @@ export const useKeyboardNavigation = ({
               // useEffect will handle onBlockSelect based on new ghostTargetInfo
             }
             return; // Handled special navigation for workspace in move mode
+          } else if (blockToMoveInfo && activeColumn === "blocks") {
+            // Navigation in 'blocks' (source or target) column during move mode - targets slots
+            const currentTargetSlotIndex =
+              ghostTargetInfo?.targetColumn === "blocks"
+                ? ghostTargetInfo.targetIndex
+                : indices.blocks; /*fallback to dense index if no ghost*/
+            let newTargetSlotIndex = currentTargetSlotIndex;
+            if (event.key === "ArrowUp") {
+              newTargetSlotIndex =
+                currentTargetSlotIndex > 0
+                  ? currentTargetSlotIndex - 1
+                  : maxAvailableSlots - 1;
+            } else {
+              newTargetSlotIndex =
+                currentTargetSlotIndex < maxAvailableSlots - 1
+                  ? currentTargetSlotIndex + 1
+                  : 0;
+            }
+            if (
+              newTargetSlotIndex !== currentTargetSlotIndex &&
+              newTargetSlotIndex >= 0 &&
+              newTargetSlotIndex < maxAvailableSlots
+            ) {
+              const newTargetIsPlaceholder =
+                availableBlockSlots[newTargetSlotIndex] === null;
+              const newTargetBlock = availableBlockSlots[newTargetSlotIndex];
+              setGhostTargetInfo({
+                targetColumn: "blocks",
+                targetIndex: newTargetSlotIndex,
+                isTargetPlaceholder: newTargetIsPlaceholder,
+                targetBlockId: newTargetIsPlaceholder
+                  ? null
+                  : newTargetBlock?.id || null,
+              });
+            }
+            return; // Handled special navigation for availableBlocks slots in move mode
           }
 
-          // Standard navigation if not in move mode targeting workspace
           if (denseCurrentList.length > 0) {
             if (event.key === "ArrowUp") {
               newDenseIndex =
@@ -381,7 +535,7 @@ export const useKeyboardNavigation = ({
             onBlockSelect(originalBlockToSelect);
             const sourceListForIndex =
               originalSourceColumn === "blocks"
-                ? availableBlocks
+                ? (availableBlockSlots.filter(Boolean) as Block[])
                 : (workspace.filter(Boolean) as Block[]);
             const originalBlockIndex = sourceListForIndex.findIndex(
               (b) => b.id === originalBlockToSelect.id
@@ -407,12 +561,17 @@ export const useKeyboardNavigation = ({
                   (b) => b?.id === blockToInitiateMove.id
                 );
               } else {
-                rawSourceIndex = currentIndexInDenseList;
+                // 'blocks' column
+                // blockToInitiateMove is from dense list, find its index in raw availableBlockSlots
+                rawSourceIndex = availableBlockSlots.findIndex(
+                  (b) => b?.id === blockToInitiateMove.id
+                );
               }
 
-              if (activeColumn === "workspace" && rawSourceIndex === -1) {
+              if (rawSourceIndex === -1) {
+                // Should not happen if blockToInitiateMove exists
                 console.error(
-                  "Error: Could not find block in raw workspace to determine sourceIndex."
+                  "Error: Could not find block in raw source list to determine sourceIndex."
                 );
                 return;
               }
@@ -421,7 +580,7 @@ export const useKeyboardNavigation = ({
                 id: blockToInitiateMove.id,
                 sourceColumn: activeColumn,
                 sourceData: blockToInitiateMove,
-                sourceIndex: rawSourceIndex,
+                sourceIndex: rawSourceIndex, // This is index in RAW list (availableBlockSlots or workspace)
               });
               const targetColumnForGhost =
                 activeColumn === "blocks" ? "workspace" : "blocks";
@@ -434,15 +593,20 @@ export const useKeyboardNavigation = ({
             ) {
               const sourceBlockData = blockToMoveInfo.sourceData;
               const tempWorkspace = [...workspace];
-              let newAvailableBlocks = [...availableBlocks];
+              const tempAvailableBlockSlots = [...availableBlockSlots]; // MODIFIED
 
               if (ghostTargetInfo.targetColumn === "workspace") {
                 if (ghostTargetInfo.isTargetPlaceholder) {
                   tempWorkspace[ghostTargetInfo.targetIndex] = sourceBlockData;
                   if (blockToMoveInfo.sourceColumn === "blocks") {
-                    newAvailableBlocks = newAvailableBlocks.filter(
-                      (b) => b.id !== sourceBlockData.id
-                    );
+                    // Set source slot in availableBlockSlots to null
+                    if (
+                      blockToMoveInfo.sourceIndex <
+                      tempAvailableBlockSlots.length
+                    ) {
+                      tempAvailableBlockSlots[blockToMoveInfo.sourceIndex] =
+                        null;
+                    }
                   } else {
                     tempWorkspace[blockToMoveInfo.sourceIndex] = null;
                   }
@@ -450,21 +614,25 @@ export const useKeyboardNavigation = ({
                   const blockToSwapOut =
                     tempWorkspace[ghostTargetInfo.targetIndex];
                   tempWorkspace[ghostTargetInfo.targetIndex] = sourceBlockData;
-
                   if (blockToMoveInfo.sourceColumn === "blocks") {
-                    newAvailableBlocks = newAvailableBlocks.filter(
-                      (b) => b.id !== sourceBlockData.id
-                    );
-                    if (blockToSwapOut) newAvailableBlocks.push(blockToSwapOut);
+                    // Replace source slot with blockToSwapOut or null
+                    if (
+                      blockToMoveInfo.sourceIndex <
+                      tempAvailableBlockSlots.length
+                    ) {
+                      tempAvailableBlockSlots[blockToMoveInfo.sourceIndex] =
+                        blockToSwapOut || null;
+                    }
                   } else {
                     tempWorkspace[blockToMoveInfo.sourceIndex] = blockToSwapOut;
                   }
                 }
                 onWorkspaceChange(tempWorkspace);
                 if (blockToMoveInfo.sourceColumn === "blocks") {
-                  onAvailableBlocksChange(newAvailableBlocks);
+                  onAvailableBlocksChange(tempAvailableBlockSlots); // Pass modified sparse array
                 }
               } else {
+                // ghostTargetInfo.targetColumn === "blocks"
                 if (blockToMoveInfo.sourceColumn !== "workspace") {
                   console.error(
                     "Invalid state: To move to Available Blocks, source must be Workspace."
@@ -476,24 +644,36 @@ export const useKeyboardNavigation = ({
                 tempWorkspace[blockToMoveInfo.sourceIndex] = null;
                 onWorkspaceChange(tempWorkspace);
 
-                if (ghostTargetInfo.targetBlockId) {
-                  const targetIdxInAvailable = ghostTargetInfo.targetIndex;
-                  if (
-                    targetIdxInAvailable !== -1 &&
-                    targetIdxInAvailable < newAvailableBlocks.length
-                  ) {
-                    newAvailableBlocks[targetIdxInAvailable] = sourceBlockData;
-                  } else {
-                    newAvailableBlocks.push(sourceBlockData);
+                // ghostTargetInfo.targetIndex is index in availableBlockSlots
+                const targetSlotIndex = ghostTargetInfo.targetIndex;
+                if (
+                  targetSlotIndex >= 0 &&
+                  targetSlotIndex < tempAvailableBlockSlots.length
+                ) {
+                  const blockToSwapOutFromAvailable =
+                    tempAvailableBlockSlots[targetSlotIndex];
+                  tempAvailableBlockSlots[targetSlotIndex] = sourceBlockData;
+                  // If a block was swapped out from available, it needs to go to workspace (first empty, or error/ignore)
+                  if (blockToSwapOutFromAvailable) {
+                    const firstEmptyInWorkspace = tempWorkspace.findIndex(
+                      (s) => s === null
+                    );
+                    if (firstEmptyInWorkspace !== -1) {
+                      tempWorkspace[firstEmptyInWorkspace] =
+                        blockToSwapOutFromAvailable;
+                      onWorkspaceChange(tempWorkspace); // Update workspace again
+                    } else {
+                      console.warn(
+                        "Workspace full, cannot move swapped block from available to workspace."
+                      );
+                    }
                   }
                 } else {
-                  if (
-                    !newAvailableBlocks.find((b) => b.id === sourceBlockData.id)
-                  ) {
-                    newAvailableBlocks.push(sourceBlockData);
-                  }
+                  console.error(
+                    "Target index for availableBlockSlots out of bounds."
+                  );
                 }
-                onAvailableBlocksChange(newAvailableBlocks);
+                onAvailableBlocksChange(tempAvailableBlockSlots); // Pass modified sparse array
               }
 
               const nextActiveCol = blockToMoveInfo.sourceColumn;
@@ -501,47 +681,56 @@ export const useKeyboardNavigation = ({
 
               let denseSourceListAfterMove: Block[];
               if (nextActiveCol === "blocks") {
-                denseSourceListAfterMove = newAvailableBlocks;
-                nextSourceIndexAfterMove = Math.min(
-                  blockToMoveInfo.sourceIndex,
-                  denseSourceListAfterMove.length - 1
-                );
-                if (denseSourceListAfterMove.length === 0)
+                denseSourceListAfterMove = tempAvailableBlockSlots.filter(
+                  Boolean
+                ) as Block[]; // Use updated slots
+                // Try to select the block that is now at the original raw source index, if any
+                const blockAtOldRawIndex =
+                  tempAvailableBlockSlots[blockToMoveInfo.sourceIndex];
+                if (blockAtOldRawIndex) {
+                  nextSourceIndexAfterMove = denseSourceListAfterMove.findIndex(
+                    (b) => b.id === blockAtOldRawIndex.id
+                  );
+                  if (nextSourceIndexAfterMove === -1)
+                    nextSourceIndexAfterMove = 0;
+                } else {
+                  // If slot is now empty, try to select based on original dense index or adjust
+                  nextSourceIndexAfterMove = Math.min(
+                    indices.blocks /*old dense index*/,
+                    denseSourceListAfterMove.length - 1
+                  );
+                }
+                if (
+                  denseSourceListAfterMove.length === 0 ||
+                  nextSourceIndexAfterMove < 0
+                )
                   nextSourceIndexAfterMove = 0;
               } else {
                 denseSourceListAfterMove = tempWorkspace.filter(
                   Boolean
                 ) as Block[];
-
-                const originalSourceBlockId = blockToMoveInfo.id;
                 const itemNowAtOriginalRawSourceIndex =
                   tempWorkspace[blockToMoveInfo.sourceIndex];
-
-                if (
-                  itemNowAtOriginalRawSourceIndex &&
-                  itemNowAtOriginalRawSourceIndex.id !== originalSourceBlockId
-                ) {
+                if (itemNowAtOriginalRawSourceIndex) {
                   nextSourceIndexAfterMove = denseSourceListAfterMove.findIndex(
                     (b) => b.id === itemNowAtOriginalRawSourceIndex.id
                   );
-                } else if (denseSourceListAfterMove.length > 0) {
+                  if (nextSourceIndexAfterMove === -1)
+                    nextSourceIndexAfterMove = 0;
+                } else {
                   let potentialIndex = indices.workspace;
                   if (potentialIndex >= denseSourceListAfterMove.length) {
-                    potentialIndex = denseSourceListAfterMove.length - 1;
+                    potentialIndex =
+                      denseSourceListAfterMove.length > 0
+                        ? denseSourceListAfterMove.length - 1
+                        : 0;
                   }
                   nextSourceIndexAfterMove = potentialIndex;
-                } else {
-                  nextSourceIndexAfterMove = 0;
                 }
-
                 if (
-                  nextSourceIndexAfterMove >= denseSourceListAfterMove.length &&
-                  denseSourceListAfterMove.length > 0
-                ) {
-                  nextSourceIndexAfterMove =
-                    denseSourceListAfterMove.length - 1;
-                }
-                if (denseSourceListAfterMove.length === 0)
+                  denseSourceListAfterMove.length === 0 ||
+                  nextSourceIndexAfterMove < 0
+                )
                   nextSourceIndexAfterMove = 0;
               }
 
@@ -590,7 +779,7 @@ export const useKeyboardNavigation = ({
     [
       activeColumn,
       indices,
-      availableBlocks,
+      availableBlockSlots,
       workspace,
       selectedBlockId,
       onBlockSelect,
@@ -603,6 +792,9 @@ export const useKeyboardNavigation = ({
       ghostTargetInfo,
       setGhostTargetInfo,
       maxBlocks,
+      isDraggingDnd,
+      justDraggedBlockId,
+      setJustDraggedBlockId,
     ]
   );
 

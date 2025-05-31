@@ -27,7 +27,11 @@ const WorkspaceBlockItem = ({
     transform,
     isDragging,
   } = useDraggable({
-    id: block.id,
+    id: `workspace-block-${block.id}`,
+    data: {
+      type: "workspace-block",
+      block: block,
+    },
   });
 
   const style = {
@@ -147,33 +151,48 @@ const WorkspaceArea = ({
     id: "workspace",
   });
 
+  const denseWorkspaceBlocks = workspace.filter(Boolean) as Block[];
+
   return (
     <div ref={workspaceDroppableRef} className="h-full flex flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-2">
-          {Array.from({ length: maxBlocks }).map((_, index) => {
-            const blockInSlot = workspace[index];
+          {Array.from({ length: maxBlocks }).map((_, slotIndex) => {
+            const blockInSlot = workspace[slotIndex];
 
             const isGhostTargetForPlaceholderHere =
               ghostTargetInfo?.targetColumn === "workspace" &&
-              ghostTargetInfo?.targetIndex === index &&
+              ghostTargetInfo?.targetIndex === slotIndex &&
               ghostTargetInfo?.isTargetPlaceholder;
 
             const isGhostTargetForBlockHere =
               ghostTargetInfo?.targetColumn === "workspace" &&
-              ghostTargetInfo?.targetIndex === index &&
+              ghostTargetInfo?.targetIndex === slotIndex &&
               !ghostTargetInfo?.isTargetPlaceholder;
 
             const ghostDataForDisplay = blockToMoveInfo?.sourceData || null;
 
             if (blockInSlot) {
-              const isSelected =
+              const isSelectedByGlobalId =
                 blockInSlot.id === selectedBlockId && !blockToMoveInfo;
-              const isKeyboardHighlighted =
+
+              let isHighlightedByKeyboard = false;
+              if (
                 activeColumn === "workspace" &&
                 isKeyboardModeActive &&
-                index === selectedIndex &&
-                !blockToMoveInfo;
+                !blockToMoveInfo
+              ) {
+                if (
+                  selectedIndex >= 0 &&
+                  selectedIndex < denseWorkspaceBlocks.length
+                ) {
+                  if (
+                    denseWorkspaceBlocks[selectedIndex]?.id === blockInSlot.id
+                  ) {
+                    isHighlightedByKeyboard = true;
+                  }
+                }
+              }
 
               const isMarked =
                 blockToMoveInfo?.id === blockInSlot.id &&
@@ -190,8 +209,8 @@ const WorkspaceArea = ({
                   )}
                   <WorkspaceBlockItem
                     block={blockInSlot}
-                    isSelected={isSelected && !isMarked}
-                    isKeyboardHighlighted={isKeyboardHighlighted && !isMarked}
+                    isSelected={isSelectedByGlobalId && !isMarked}
+                    isKeyboardHighlighted={isHighlightedByKeyboard && !isMarked}
                     isMarkedForMove={isMarked}
                     isGhostDropTarget={isGhostTargetForBlockHere ?? false}
                     onSelect={onSelectBlock}
@@ -201,10 +220,10 @@ const WorkspaceArea = ({
             }
             return (
               <Placeholder
-                key={`placeholder-${index}`}
-                index={index}
+                key={`placeholder-${slotIndex}`}
+                index={slotIndex}
                 isActive={
-                  activeDroppableId === `placeholder-${index}` &&
+                  activeDroppableId === `placeholder-${slotIndex}` &&
                   !isGhostTargetForPlaceholderHere
                 }
                 isGhostDropTarget={isGhostTargetForPlaceholderHere ?? false}
