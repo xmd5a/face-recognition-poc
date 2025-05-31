@@ -328,15 +328,25 @@ body {
 }
 
 /* Style dla H1 */
-.prose :where(h1):not(:where([class~=\"not-prose\"] *)) {
+.prose :where(h1):not(:where([class~="not-prose"] *)) {
   color: var(--tw-prose-headings, #e5e5e5);
   font-weight: 700;
-  margin-top: 0;
+  font-size: 1.25em;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.prose :where(h1):not(:where([class~="not-prose"] *))::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 1px;
+  background-color: var(--tw-prose-hr, rgba(229, 229, 229, 0.3));
   margin-bottom: 0.75em;
 }
 
 /* Style dla H3 */
-.prose :where(h3):not(:where([class~=\"not-prose\"] *)) {
+.prose :where(h3):not(:where([class~="not-prose"] *)) {
   color: var(--tw-prose-headings, #e5e5e5);
   font-weight: 600;
   margin-top: 1.25em;
@@ -344,53 +354,53 @@ body {
 }
 
 /* Pierwszy akapit */
-.prose :where(p:first-of-type):not(:where([class~=\"not-prose\"] *)) {
+.prose :where(p:first-of-type):not(:where([class~="not-prose"] *)) {
   color: #00dd00;
-  margin-top: 0.75em;
+  margin-top: 0;
   margin-bottom: 0.75em;
 }
 
 /* Pozostałe akapity */
-.prose :where(p):not(:where([class~=\"not-prose\"] *)):not(:first-of-type) {
+.prose :where(p):not(:where([class~="not-prose"] *)):not(:first-of-type) {
   color: var(--tw-prose-body, #e5e5e5);
   margin-top: 0.75em;
   margin-bottom: 0.75em;
 }
 
 /* Style dla list */
-.prose :where(ul):not(:where([class~=\"not-prose\"] *)),
-.prose :where(ol):not(:where([class~=\"not-prose\"] *)) {
+.prose :where(ul):not(:where([class~="not-prose"] *)),
+.prose :where(ol):not(:where([class~="not-prose"] *)) {
   margin-top: 0.75em;
   margin-bottom: 0.75em;
   padding-left: 1.5em;
 }
 
-.prose :where(ul > li):not(:where([class~=\"not-prose\"] *))::marker {
+.prose :where(ul > li):not(:where([class~="not-prose"] *))::marker {
   color: var(--tw-prose-bullets, #e5e5e5);
 }
 
-.prose :where(ol > li):not(:where([class~=\"not-prose\"] *))::marker {
+.prose :where(ol > li):not(:where([class~="not-prose"] *))::marker {
   color: var(--tw-prose-counters, #e5e5e5);
   font-weight: 600;
 }
 
-.prose :where(li):not(:where([class~=\"not-prose\"] *)) {
+.prose :where(li):not(:where([class~="not-prose"] *)) {
   margin-top: 0.3em;
   margin-bottom: 0.3em;
   padding-left: 0.25em;
   color: var(--tw-prose-body, #e5e5e5);
 }
 
-.prose :where(strong):not(:where([class~=\"not-prose\"] *)) {
+.prose :where(strong):not(:where([class~="not-prose"] *)) {
   color: var(--tw-prose-bold, #ffffff);
   font-weight: 700;
 }
 
-.prose :where(em):not(:where([class~=\"not-prose\"] *)) {
+.prose :where(em):not(:where([class~="not-prose"] *)) {
   color: #d0d0d0;
 }
 
-.prose :where(hr):not(:where([class~=\"not-prose\"] *)) {
+.prose :where(hr):not(:where([class~="not-prose"] *)) {
   border-color: var(--tw-prose-hr, rgba(229, 229, 229, 0.3));
   margin-top: 1.5em;
   margin-bottom: 1.5em;
