@@ -25,7 +25,6 @@ interface TerminalProps {
 const Terminal = ({
   isCompiling,
   errors,
-  onReset,
   onCompile,
   currentBlocksCount,
   maxBlocks,
@@ -139,9 +138,6 @@ const Terminal = ({
         }
       }, commandTypingSpeed);
 
-      const typingDurationEstimate =
-        commandToType.length * commandTypingSpeed +
-        (mockCode.length / charsPerBatch) * codeTypingSpeed;
       // Timeout should be less than parent useGameState's 5000ms compile time
       const actualDisplayTimeout = 9000;
 

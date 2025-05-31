@@ -1,6 +1,5 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 // Removed: import type { Block } from "./BlockList";
 // Assuming BlockToMoveInfo and GhostTargetInfo types are available globally or imported
@@ -248,7 +247,6 @@ const BlockList = ({
   selectedBlockId,
   selectedIndex, // Index in DENSE list of actual blocks from this column
   onBlockSelect,
-  onBlockMove,
   isKeyboardModeActive,
   activeColumn,
   blockToMoveInfo,
@@ -264,24 +262,6 @@ const BlockList = ({
     blockToMoveInfo?.sourceColumn === "blocks"
       ? blockToMoveInfo.sourceData
       : null;
-
-  // This might need adjustment if onBlockMove is triggered from a placeholder context
-  const handleBlockMove = (block: Block) => {
-    if (onBlockMove) {
-      onBlockMove(block);
-      // Find next block in DENSE list for selection after move
-      const currentIndexInDense = denseBlocks.findIndex(
-        (b) => b.id === block.id
-      );
-      if (currentIndexInDense !== -1) {
-        const nextBlockInDense =
-          denseBlocks[currentIndexInDense + 1] || denseBlocks[0];
-        if (nextBlockInDense) {
-          onBlockSelect(nextBlockInDense);
-        }
-      }
-    }
-  };
 
   const displayedBlockForDescription =
     blockMarkedForMoveInThisColumnData || // If a block from this list is marked for move, show its desc

@@ -1,4 +1,3 @@
-import React from "react";
 import BlockList from "./BlockList";
 import WorkspaceArea from "./WorkspaceArea";
 import InfoPanel from "./InfoPanel";

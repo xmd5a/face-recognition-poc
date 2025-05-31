@@ -11,7 +11,6 @@ import {
 import {
   SortableContext,
   verticalListSortingStrategy,
-  arrayMove as dndKitArrayMove,
 } from "@dnd-kit/sortable";
 import GameLayout from "./GameLayout";
 import Header from "./Header";
@@ -869,21 +868,6 @@ const Game = ({
       sourceType,
       draggedBlock,
     });
-  };
-
-  const getActiveBlock = () => {
-    if (!activeId) return null;
-    // Combine initialBlocks (as a fallback for blocks not yet in slots) and blocks from both slot types
-    const allPossibleBlocks = [
-      ...initialBlocks, // Might be redundant if initialBlocks are all in availableBlockSlots at start
-      ...(availableBlockSlots.filter(Boolean) as Block[]),
-      ...(workspace.filter(Boolean) as Block[]),
-    ];
-    // Deduplicate, prioritizing blocks from slots, then initialBlocks
-    const uniqueBlocks = Array.from(
-      new Map(allPossibleBlocks.map((b) => [b.id, b])).values()
-    );
-    return uniqueBlocks.find((block) => block.id === activeId);
   };
 
   return (

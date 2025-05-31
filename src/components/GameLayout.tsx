@@ -5,7 +5,7 @@ interface GameLayoutProps {
   isCompiling: boolean;
 }
 
-const GameLayout = ({ children, isCompiling }: GameLayoutProps) => {
+const GameLayout = ({ children }: GameLayoutProps) => {
   return (
     <div className="min-h-screen bg-[#1A1A1A] text-terminal-green font-mono relative overflow-hidden">
       {/* CRT effect overlay */}

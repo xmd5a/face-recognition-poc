@@ -2,7 +2,6 @@ import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { Block } from "./BlockList";
 import type { BlockToMoveInfo, GhostTargetInfo } from "./Game";
-import { useState } from "react";
 
 interface WorkspaceBlockItemProps {
   block: Block;
