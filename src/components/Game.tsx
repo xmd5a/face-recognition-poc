@@ -605,7 +605,7 @@ const Game = ({
       <div className="container mx-auto px-4 py-8 h-screen flex flex-col">
         <Header
           levelInfo={{
-            title: "Face Recognition Pipeline",
+            title: "Face Recognition v0.1",
             requiredBlocks: maxBlocks,
             currentBlocks: currentBlocksCount,
           }}

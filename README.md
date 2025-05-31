@@ -1,4 +1,4 @@
-# Face Recognition Pipeline
+# Face Recognition
 
 ## scenarios
 
