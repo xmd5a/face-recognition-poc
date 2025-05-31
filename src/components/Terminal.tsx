@@ -134,61 +134,69 @@ const Terminal = ({
   };
 
   return (
-    <div className="relative h-full bg-black/30 rounded-lg border border-terminal-green/20 overflow-hidden">
-      <MatrixEffect isActive={isCompiling} />
+    <>
+      <style>
+        {`
+          @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+          }
+          .cursor-blink {
+            animation: blink 1s step-end infinite;
+          }
+        `}
+      </style>
+      <div className="relative h-full bg-black/30 rounded-lg border border-terminal-green/20 overflow-hidden">
+        <MatrixEffect isActive={isCompiling} />
 
-      <div className="relative z-50 p-4">
-        {isCompiling ? (
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-terminal-green rounded-full animate-pulse mr-3" />
-              <span className="terminal-text">{initText}</span>
-            </div>
-            <CompilationStep
-              text="Analyzing block sequence..."
-              show={step >= 1}
-            />
-            <CompilationStep
-              text="Validating dependencies..."
-              show={step >= 2}
-            />
-            <CompilationStep text="Running compilation..." show={step >= 3} />
-          </div>
-        ) : errors.length > 0 ? (
-          <div className="space-y-4">
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-red-500 rounded-full mr-3" />
-              <span className="text-red-400">
-                Compilation failed: {errors.length} error
-                {errors.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-            {errors.map((error, index) => (
-              <div key={index} className="pl-6 text-red-400 opacity-90">
-                {error}
+        <div className="relative z-50 p-4">
+          {isCompiling ? (
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-terminal-green rounded-full animate-pulse mr-3" />
+                <span className="terminal-text">{initText}</span>
               </div>
-            ))}
-            <button
-              onClick={handleTryAgain}
-              className="mt-4 px-4 py-2 bg-terminal-green/10 border border-terminal-green/20
-                       rounded hover:bg-terminal-green/20 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : !isCompiling && errors.length === 0 && hasCompilationAttempted ? (
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-green-500 rounded-full mr-3" />
-            <span className="text-green-400">Compilation Successful!</span>
-          </div>
-        ) : (
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-terminal-green/50 rounded-full mr-3" />
-            <span className="opacity-70">Ready for compilation...</span>
-          </div>
-        )}
+              <CompilationStep
+                text="Analyzing block sequence..."
+                show={step >= 1}
+              />
+              <CompilationStep
+                text="Validating dependencies..."
+                show={step >= 2}
+              />
+              <CompilationStep text="Running compilation..." show={step >= 3} />
+            </div>
+          ) : errors.length > 0 ? (
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-500 rounded-full mr-3" />
+                <span className="text-red-400">
+                  Compilation failed: {errors.length} error
+                  {errors.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              {errors.map((error, index) => (
+                <div key={index} className="pl-6 text-red-400 opacity-90">
+                  {error}
+                </div>
+              ))}
+            </div>
+          ) : !isCompiling && errors.length === 0 && hasCompilationAttempted ? (
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-green-500 rounded-full mr-3" />
+              <span className="text-green-400">Compilation Successful!</span>
+            </div>
+          ) : (
+            <div className="flex items-center font-mono">
+              <span className="text-terminal-green">adamx@PC:</span>
+              <span className="text-blue-400">~</span>
+              <span className="text-terminal-green">$</span>
+              <span className="ml-2 w-2 h-4 bg-white cursor-blink inline-block"></span>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
