@@ -233,11 +233,6 @@ const WorkspaceArea = ({
               />
             );
           })}
-          {workspace.filter(Boolean).length === 0 && !ghostTargetInfo && (
-            <div className="absolute inset-0 flex items-center justify-center text-terminal-green/20 text-lg pointer-events-none">
-              Drop blocks here ({maxBlocks} max)
-            </div>
-          )}
         </div>
       </div>
     </div>

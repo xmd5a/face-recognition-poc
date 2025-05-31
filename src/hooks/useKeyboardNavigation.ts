@@ -400,92 +400,63 @@ export const useKeyboardNavigation = ({
       const maxDenseIndex =
         denseCurrentList.length > 0 ? denseCurrentList.length - 1 : 0;
       const maxAvailableSlots = availableBlockSlots.length;
-
-      if (
-        blockToMoveInfo &&
-        activeColumn === blockToMoveInfo.sourceColumn &&
-        (event.key === "ArrowUp" || event.key === "ArrowDown")
-      ) {
-        event.preventDefault();
-        return;
-      }
-
-      if (
-        blockToMoveInfo &&
-        (event.key === "ArrowLeft" || event.key === "ArrowRight")
-      ) {
-        event.preventDefault();
-        return;
-      }
+      const maxWorkspaceSlots = maxBlocks;
 
       switch (event.key) {
         case "ArrowUp":
         case "ArrowDown":
           event.preventDefault();
-          if (blockToMoveInfo && activeColumn === "workspace") {
-            const currentTargetSlotIndex =
-              ghostTargetInfo?.targetColumn === "workspace"
-                ? ghostTargetInfo.targetIndex
-                : 0;
+          if (blockToMoveInfo) {
+            const targetCol = ghostTargetInfo?.targetColumn || activeColumn;
+            let currentTargetSlotIndex = ghostTargetInfo?.targetIndex;
+
+            if (typeof currentTargetSlotIndex !== "number") {
+              const listForInitialTarget =
+                targetCol === "workspace" ? workspace : availableBlockSlots;
+              const currentSelectedInActiveColDenseList = (
+                activeColumn === "blocks"
+                  ? (availableBlockSlots.filter(Boolean) as Block[])
+                  : (workspace.filter(Boolean) as Block[])
+              ).find((b) => b.id === selectedBlockId);
+
+              if (currentSelectedInActiveColDenseList) {
+                currentTargetSlotIndex = listForInitialTarget.findIndex(
+                  (b) => b?.id === currentSelectedInActiveColDenseList.id
+                );
+                if (currentTargetSlotIndex === -1) currentTargetSlotIndex = 0;
+              } else {
+                currentTargetSlotIndex = 0;
+              }
+            }
+
             let newTargetSlotIndex = currentTargetSlotIndex;
+            const listToNavigate =
+              targetCol === "workspace" ? workspace : availableBlockSlots;
+            const slotLimit =
+              targetCol === "workspace" ? maxWorkspaceSlots : maxAvailableSlots;
 
             if (event.key === "ArrowUp") {
               newTargetSlotIndex =
                 currentTargetSlotIndex > 0
                   ? currentTargetSlotIndex - 1
-                  : maxBlocks - 1;
+                  : slotLimit - 1;
             } else {
-              // ArrowDown
               newTargetSlotIndex =
-                currentTargetSlotIndex < maxBlocks - 1
+                currentTargetSlotIndex < slotLimit - 1
                   ? currentTargetSlotIndex + 1
                   : 0;
             }
 
-            if (newTargetSlotIndex !== currentTargetSlotIndex) {
-              const newTargetIsPlaceholder =
-                workspace[newTargetSlotIndex] === null;
-              const newTargetBlock = workspace[newTargetSlotIndex];
-
-              setGhostTargetInfo({
-                targetColumn: "workspace",
-                targetIndex: newTargetSlotIndex,
-                isTargetPlaceholder: newTargetIsPlaceholder,
-                targetBlockId: newTargetIsPlaceholder
-                  ? null
-                  : newTargetBlock?.id || null,
-              });
-              // useEffect will handle onBlockSelect based on new ghostTargetInfo
-            }
-            return; // Handled special navigation for workspace in move mode
-          } else if (blockToMoveInfo && activeColumn === "blocks") {
-            // Navigation in 'blocks' (source or target) column during move mode - targets slots
-            const currentTargetSlotIndex =
-              ghostTargetInfo?.targetColumn === "blocks"
-                ? ghostTargetInfo.targetIndex
-                : indices.blocks; /*fallback to dense index if no ghost*/
-            let newTargetSlotIndex = currentTargetSlotIndex;
-            if (event.key === "ArrowUp") {
-              newTargetSlotIndex =
-                currentTargetSlotIndex > 0
-                  ? currentTargetSlotIndex - 1
-                  : maxAvailableSlots - 1;
-            } else {
-              newTargetSlotIndex =
-                currentTargetSlotIndex < maxAvailableSlots - 1
-                  ? currentTargetSlotIndex + 1
-                  : 0;
-            }
             if (
               newTargetSlotIndex !== currentTargetSlotIndex &&
               newTargetSlotIndex >= 0 &&
-              newTargetSlotIndex < maxAvailableSlots
+              newTargetSlotIndex < slotLimit
             ) {
               const newTargetIsPlaceholder =
-                availableBlockSlots[newTargetSlotIndex] === null;
-              const newTargetBlock = availableBlockSlots[newTargetSlotIndex];
+                listToNavigate[newTargetSlotIndex] === null;
+              const newTargetBlock = listToNavigate[newTargetSlotIndex];
               setGhostTargetInfo({
-                targetColumn: "blocks",
+                targetColumn: targetCol,
                 targetIndex: newTargetSlotIndex,
                 isTargetPlaceholder: newTargetIsPlaceholder,
                 targetBlockId: newTargetIsPlaceholder
@@ -493,33 +464,57 @@ export const useKeyboardNavigation = ({
                   : newTargetBlock?.id || null,
               });
             }
-            return; // Handled special navigation for availableBlocks slots in move mode
-          }
-
-          if (denseCurrentList.length > 0) {
-            if (event.key === "ArrowUp") {
-              newDenseIndex =
-                currentIndexInDenseList > 0
-                  ? currentIndexInDenseList - 1
-                  : maxDenseIndex;
-            } else {
-              // ArrowDown
-              newDenseIndex =
-                currentIndexInDenseList < maxDenseIndex
-                  ? currentIndexInDenseList + 1
-                  : 0;
+          } else {
+            if (denseCurrentList.length > 0) {
+              if (event.key === "ArrowUp") {
+                newDenseIndex =
+                  currentIndexInDenseList > 0
+                    ? currentIndexInDenseList - 1
+                    : maxDenseIndex;
+              } else {
+                newDenseIndex =
+                  currentIndexInDenseList < maxDenseIndex
+                    ? currentIndexInDenseList + 1
+                    : 0;
+              }
             }
           }
           break;
         case "ArrowLeft":
           event.preventDefault();
-          if (!blockToMoveInfo && activeColumn === "workspace") {
+          if (blockToMoveInfo) {
+            if (activeColumn === "workspace") {
+              setActiveColumn("blocks");
+              const firstAvailableSlotIsEmpty = availableBlockSlots[0] === null;
+              setGhostTargetInfo({
+                targetColumn: "blocks",
+                targetIndex: 0,
+                isTargetPlaceholder: firstAvailableSlotIsEmpty,
+                targetBlockId: firstAvailableSlotIsEmpty
+                  ? null
+                  : availableBlockSlots[0]?.id || null,
+              });
+            }
+          } else if (activeColumn === "workspace") {
             setActiveColumn("blocks");
           }
           break;
         case "ArrowRight":
           event.preventDefault();
-          if (!blockToMoveInfo && activeColumn === "blocks") {
+          if (blockToMoveInfo) {
+            if (activeColumn === "blocks") {
+              setActiveColumn("workspace");
+              const firstWorkspaceSlotIsEmpty = workspace[0] === null;
+              setGhostTargetInfo({
+                targetColumn: "workspace",
+                targetIndex: 0,
+                isTargetPlaceholder: firstWorkspaceSlotIsEmpty,
+                targetBlockId: firstWorkspaceSlotIsEmpty
+                  ? null
+                  : workspace[0]?.id || null,
+              });
+            }
+          } else if (activeColumn === "blocks") {
             setActiveColumn("workspace");
           }
           break;
@@ -561,199 +556,147 @@ export const useKeyboardNavigation = ({
                   (b) => b?.id === blockToInitiateMove.id
                 );
               } else {
-                // 'blocks' column
-                // blockToInitiateMove is from dense list, find its index in raw availableBlockSlots
                 rawSourceIndex = availableBlockSlots.findIndex(
                   (b) => b?.id === blockToInitiateMove.id
                 );
               }
+              if (rawSourceIndex === -1) return;
 
-              if (rawSourceIndex === -1) {
-                // Should not happen if blockToInitiateMove exists
-                console.error(
-                  "Error: Could not find block in raw source list to determine sourceIndex."
-                );
-                return;
-              }
+              const initiatingColumn = activeColumn;
 
               setBlockToMoveInfo({
                 id: blockToInitiateMove.id,
-                sourceColumn: activeColumn,
+                sourceColumn: initiatingColumn,
                 sourceData: blockToInitiateMove,
-                sourceIndex: rawSourceIndex, // This is index in RAW list (availableBlockSlots or workspace)
+                sourceIndex: rawSourceIndex,
               });
-              const targetColumnForGhost =
-                activeColumn === "blocks" ? "workspace" : "blocks";
-              setActiveColumn(targetColumnForGhost);
+
+              let columnForGhostTarget: Column;
+              let initialTargetSlotIndexForGhost: number;
+              let initialTargetIsPlaceholderForGhost: boolean;
+              let initialTargetBlockIdForGhost: string | null;
+
+              if (initiatingColumn === "workspace") {
+                columnForGhostTarget = "workspace";
+                initialTargetSlotIndexForGhost = rawSourceIndex;
+                const blockAtSource = workspace[rawSourceIndex];
+                initialTargetIsPlaceholderForGhost = blockAtSource === null;
+                initialTargetBlockIdForGhost = blockAtSource
+                  ? blockAtSource.id
+                  : null;
+              } else {
+                columnForGhostTarget = "workspace";
+                initialTargetSlotIndexForGhost = 0;
+                const targetListForGhost = workspace;
+                initialTargetIsPlaceholderForGhost =
+                  targetListForGhost.length === 0 ||
+                  targetListForGhost[0] === null;
+                initialTargetBlockIdForGhost =
+                  initialTargetIsPlaceholderForGhost || !targetListForGhost[0]
+                    ? null
+                    : targetListForGhost[0]?.id || null;
+              }
+
+              setActiveColumn(columnForGhostTarget);
+
+              setGhostTargetInfo({
+                targetColumn: columnForGhostTarget,
+                targetIndex: initialTargetSlotIndexForGhost,
+                isTargetPlaceholder: initialTargetIsPlaceholderForGhost,
+                targetBlockId: initialTargetBlockIdForGhost,
+              });
             }
           } else {
             if (
               ghostTargetInfo &&
               activeColumn === ghostTargetInfo.targetColumn
             ) {
-              const sourceBlockData = blockToMoveInfo.sourceData;
-              const tempWorkspace = [...workspace];
-              const tempAvailableBlockSlots = [...availableBlockSlots]; // MODIFIED
+              const sourceData = blockToMoveInfo.sourceData;
+              const sourceCol = blockToMoveInfo.sourceColumn;
+              const sourceIdx = blockToMoveInfo.sourceIndex;
 
-              if (ghostTargetInfo.targetColumn === "workspace") {
-                if (ghostTargetInfo.isTargetPlaceholder) {
-                  tempWorkspace[ghostTargetInfo.targetIndex] = sourceBlockData;
-                  if (blockToMoveInfo.sourceColumn === "blocks") {
-                    // Set source slot in availableBlockSlots to null
-                    if (
-                      blockToMoveInfo.sourceIndex <
-                      tempAvailableBlockSlots.length
-                    ) {
-                      tempAvailableBlockSlots[blockToMoveInfo.sourceIndex] =
-                        null;
-                    }
-                  } else {
-                    tempWorkspace[blockToMoveInfo.sourceIndex] = null;
-                  }
-                } else {
-                  const blockToSwapOut =
-                    tempWorkspace[ghostTargetInfo.targetIndex];
-                  tempWorkspace[ghostTargetInfo.targetIndex] = sourceBlockData;
-                  if (blockToMoveInfo.sourceColumn === "blocks") {
-                    // Replace source slot with blockToSwapOut or null
-                    if (
-                      blockToMoveInfo.sourceIndex <
-                      tempAvailableBlockSlots.length
-                    ) {
-                      tempAvailableBlockSlots[blockToMoveInfo.sourceIndex] =
-                        blockToSwapOut || null;
-                    }
-                  } else {
-                    tempWorkspace[blockToMoveInfo.sourceIndex] = blockToSwapOut;
-                  }
-                }
-                onWorkspaceChange(tempWorkspace);
-                if (blockToMoveInfo.sourceColumn === "blocks") {
-                  onAvailableBlocksChange(tempAvailableBlockSlots); // Pass modified sparse array
-                }
+              const targetCol = ghostTargetInfo.targetColumn;
+              const targetIdx = ghostTargetInfo.targetIndex;
+
+              const newWorkspace = [...workspace];
+              const newAvailable = [...availableBlockSlots];
+
+              if (sourceCol === "workspace") {
+                newWorkspace[sourceIdx] = null;
               } else {
-                // ghostTargetInfo.targetColumn === "blocks"
-                if (blockToMoveInfo.sourceColumn !== "workspace") {
-                  console.error(
-                    "Invalid state: To move to Available Blocks, source must be Workspace."
-                  );
-                  setBlockToMoveInfo(null);
-                  setGhostTargetInfo(null);
-                  return;
-                }
-                tempWorkspace[blockToMoveInfo.sourceIndex] = null;
-                onWorkspaceChange(tempWorkspace);
+                newAvailable[sourceIdx] = null;
+              }
 
-                // ghostTargetInfo.targetIndex is index in availableBlockSlots
-                const targetSlotIndex = ghostTargetInfo.targetIndex;
-                if (
-                  targetSlotIndex >= 0 &&
-                  targetSlotIndex < tempAvailableBlockSlots.length
-                ) {
-                  const blockToSwapOutFromAvailable =
-                    tempAvailableBlockSlots[targetSlotIndex];
-                  tempAvailableBlockSlots[targetSlotIndex] = sourceBlockData;
-                  // If a block was swapped out from available, it needs to go to workspace (first empty, or error/ignore)
-                  if (blockToSwapOutFromAvailable) {
-                    const firstEmptyInWorkspace = tempWorkspace.findIndex(
+              if (targetCol === "workspace") {
+                const blockBeingReplacedInWorkspace = newWorkspace[targetIdx];
+                newWorkspace[targetIdx] = sourceData;
+                if (blockBeingReplacedInWorkspace && sourceCol === "blocks") {
+                  if (newAvailable[sourceIdx] === null) {
+                    newAvailable[sourceIdx] = blockBeingReplacedInWorkspace;
+                  } else {
+                    const firstEmptyInA = newAvailable.findIndex(
                       (s) => s === null
                     );
-                    if (firstEmptyInWorkspace !== -1) {
-                      tempWorkspace[firstEmptyInWorkspace] =
-                        blockToSwapOutFromAvailable;
-                      onWorkspaceChange(tempWorkspace); // Update workspace again
-                    } else {
-                      console.warn(
-                        "Workspace full, cannot move swapped block from available to workspace."
-                      );
-                    }
+                    if (firstEmptyInA !== -1)
+                      newAvailable[firstEmptyInA] =
+                        blockBeingReplacedInWorkspace;
                   }
-                } else {
-                  console.error(
-                    "Target index for availableBlockSlots out of bounds."
-                  );
+                } else if (
+                  blockBeingReplacedInWorkspace &&
+                  sourceCol === "workspace" &&
+                  sourceIdx !== targetIdx
+                ) {
+                  if (newWorkspace[sourceIdx] === null)
+                    newWorkspace[sourceIdx] = blockBeingReplacedInWorkspace;
                 }
-                onAvailableBlocksChange(tempAvailableBlockSlots); // Pass modified sparse array
-              }
-
-              const nextActiveCol = blockToMoveInfo.sourceColumn;
-              let nextSourceIndexAfterMove: number;
-
-              let denseSourceListAfterMove: Block[];
-              if (nextActiveCol === "blocks") {
-                denseSourceListAfterMove = tempAvailableBlockSlots.filter(
-                  Boolean
-                ) as Block[]; // Use updated slots
-                // Try to select the block that is now at the original raw source index, if any
-                const blockAtOldRawIndex =
-                  tempAvailableBlockSlots[blockToMoveInfo.sourceIndex];
-                if (blockAtOldRawIndex) {
-                  nextSourceIndexAfterMove = denseSourceListAfterMove.findIndex(
-                    (b) => b.id === blockAtOldRawIndex.id
-                  );
-                  if (nextSourceIndexAfterMove === -1)
-                    nextSourceIndexAfterMove = 0;
-                } else {
-                  // If slot is now empty, try to select based on original dense index or adjust
-                  nextSourceIndexAfterMove = Math.min(
-                    indices.blocks /*old dense index*/,
-                    denseSourceListAfterMove.length - 1
-                  );
-                }
-                if (
-                  denseSourceListAfterMove.length === 0 ||
-                  nextSourceIndexAfterMove < 0
-                )
-                  nextSourceIndexAfterMove = 0;
               } else {
-                denseSourceListAfterMove = tempWorkspace.filter(
-                  Boolean
-                ) as Block[];
-                const itemNowAtOriginalRawSourceIndex =
-                  tempWorkspace[blockToMoveInfo.sourceIndex];
-                if (itemNowAtOriginalRawSourceIndex) {
-                  nextSourceIndexAfterMove = denseSourceListAfterMove.findIndex(
-                    (b) => b.id === itemNowAtOriginalRawSourceIndex.id
-                  );
-                  if (nextSourceIndexAfterMove === -1)
-                    nextSourceIndexAfterMove = 0;
-                } else {
-                  let potentialIndex = indices.workspace;
-                  if (potentialIndex >= denseSourceListAfterMove.length) {
-                    potentialIndex =
-                      denseSourceListAfterMove.length > 0
-                        ? denseSourceListAfterMove.length - 1
-                        : 0;
-                  }
-                  nextSourceIndexAfterMove = potentialIndex;
-                }
+                const blockBeingReplacedInAvailable = newAvailable[targetIdx];
+                newAvailable[targetIdx] = sourceData;
                 if (
-                  denseSourceListAfterMove.length === 0 ||
-                  nextSourceIndexAfterMove < 0
-                )
-                  nextSourceIndexAfterMove = 0;
+                  blockBeingReplacedInAvailable &&
+                  sourceCol === "workspace"
+                ) {
+                  if (newWorkspace[sourceIdx] === null) {
+                    newWorkspace[sourceIdx] = blockBeingReplacedInAvailable;
+                  } else {
+                    const firstEmptyInW = newWorkspace.findIndex(
+                      (s) => s === null
+                    );
+                    if (firstEmptyInW !== -1)
+                      newWorkspace[firstEmptyInW] =
+                        blockBeingReplacedInAvailable;
+                  }
+                } else if (
+                  blockBeingReplacedInAvailable &&
+                  sourceCol === "blocks" &&
+                  sourceIdx !== targetIdx
+                ) {
+                  if (newAvailable[sourceIdx] === null)
+                    newAvailable[sourceIdx] = blockBeingReplacedInAvailable;
+                }
               }
+
+              onWorkspaceChange(newWorkspace);
+              onAvailableBlocksChange(newAvailable);
 
               setBlockToMoveInfo(null);
               setGhostTargetInfo(null);
-              setActiveColumn(nextActiveCol);
+              setActiveColumn(targetCol);
+
+              const denseListOfTargetCol = (
+                targetCol === "workspace" ? newWorkspace : newAvailable
+              ).filter(Boolean) as Block[];
+              const newDenseIdxOfMovedBlock = denseListOfTargetCol.findIndex(
+                (b) => b.id === sourceData.id
+              );
+
               setIndices((prev) => ({
                 ...prev,
-                [nextActiveCol]: nextSourceIndexAfterMove,
+                [targetCol]:
+                  newDenseIdxOfMovedBlock !== -1 ? newDenseIdxOfMovedBlock : 0,
               }));
-
-              if (
-                denseSourceListAfterMove.length > 0 &&
-                denseSourceListAfterMove[nextSourceIndexAfterMove]
-              ) {
-                blockSelectionTriggeredByHook.current = true;
-                onBlockSelect(
-                  denseSourceListAfterMove[nextSourceIndexAfterMove]
-                );
-              } else {
-                blockSelectionTriggeredByHook.current = true;
-                onBlockSelect(null);
-              }
+              blockSelectionTriggeredByHook.current = true;
+              onBlockSelect(sourceData);
             }
           }
           break;
@@ -762,10 +705,9 @@ export const useKeyboardNavigation = ({
           break;
       }
 
-      // After the switch, if ArrowUp or ArrowDown was pressed and newDenseIndex is different,
-      // update the state.
       if (
         (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+        !blockToMoveInfo &&
         denseCurrentList.length > 0 &&
         newDenseIndex !== currentIndexInDenseList
       ) {

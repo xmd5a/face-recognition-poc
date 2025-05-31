@@ -62,6 +62,37 @@ const Game = ({
     actions,
   } = useGameState({ initialAvailableBlocks: initialBlocks, maxBlocks, hint });
 
+  // Logowanie początkowej konfiguracji bloków
+  useEffect(() => {
+    console.log("Initial Game State - Correct Block Order:");
+
+    const availableBlockIds = availableBlockSlots
+      .map((block, index) =>
+        block
+          ? `Slot ${index}: ${block.id} (${block.name})`
+          : `Slot ${index}: EMPTY`
+      )
+      .join("\n  ");
+    console.log(
+      "Available Blocks (src/hooks/useGameState -> initialAvailableBlocks -> initialBlocks prop):"
+    );
+    console.log(
+      availableBlockSlots.length > 0 ? `  ${availableBlockIds}` : "  (empty)"
+    );
+
+    const workspaceBlockIds = workspace
+      .map((block, index) =>
+        block
+          ? `Slot ${index}: ${block.id} (${block.name})`
+          : `Slot ${index}: EMPTY`
+      )
+      .join("\n  ");
+    console.log(
+      "Workspace Blocks (src/hooks/useGameState -> initialWorkspace):"
+    );
+    console.log(workspace.length > 0 ? `  ${workspaceBlockIds}` : "  (empty)");
+  }, []); // Pusta tablica zależności, aby uruchomić tylko raz po zamontowaniu
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeDroppableId, setActiveDroppableId] = useState<string | null>(
     null
