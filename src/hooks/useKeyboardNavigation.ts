@@ -104,11 +104,6 @@ export const useKeyboardNavigation = ({
           }
           return prevIndices;
         });
-      } else {
-        console.warn(
-          "useKeyboardNavigation: justDraggedBlockId was set, but block not found or mismatch with selectedBlockId.",
-          { justDraggedBlockId, selectedBlockId, activeColumn }
-        );
       }
       setJustDraggedBlockId(null);
       return;

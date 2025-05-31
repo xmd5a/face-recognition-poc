@@ -87,9 +87,6 @@ const useGameState = ({
 
   const compile = useCallback(() => {
     if (!gameState.canCompileAfterAttempt && !gameState.isCompiling) {
-      console.warn(
-        "Compilation attempt blocked. Workspace change needed or already compiling."
-      );
       return;
     }
     setGameState((prev) => ({

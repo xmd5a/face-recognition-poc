@@ -79,52 +79,7 @@ const Game = ({
   });
 
   useEffect(() => {
-    console.log("Initial Game State - Correct Block Order & Solution:");
-
-    const availableBlockIds = availableBlockSlots
-      .map((block, index) =>
-        block
-          ? `Slot ${index}: ${block.id} (${block.name})`
-          : `Slot ${index}: EMPTY`
-      )
-      .join("\n  ");
-    console.log(
-      "Available Blocks (src/hooks/useGameState -> initialAvailableBlocks -> initialBlocks prop):"
-    );
-    console.log(
-      availableBlockSlots.length > 0 ? `  ${availableBlockIds}` : "  (empty)"
-    );
-
-    const workspaceBlockIds = workspace
-      .map((block, index) =>
-        block
-          ? `Slot ${index}: ${block.id} (${block.name})`
-          : `Slot ${index}: EMPTY`
-      )
-      .join("\n  ");
-    console.log(
-      "Workspace Blocks (src/hooks/useGameState -> initialWorkspace):"
-    );
-    console.log(workspace.length > 0 ? `  ${workspaceBlockIds}` : "  (empty)");
-
-    // Log the solution
-    console.log("Expected Solution (Block IDs in order):");
-    if (solution && solution.length > 0) {
-      const solutionBlockDetails = solution
-        .map((id, index) => {
-          const blockInAvailable = initialBlocks.find((b) => b.id === id);
-          return `  Step ${index}: ${id}${
-            blockInAvailable
-              ? ` (${blockInAvailable.name})`
-              : " (Name not found in initialBlocks)"
-          }`;
-        })
-        .join("\n  ");
-      console.log(solutionBlockDetails);
-    } else {
-      console.log("  (No solution provided or solution is empty)");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Empty useEffect - removing all console.log statements
   }, []);
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -408,24 +363,20 @@ const Game = ({
     setDraggedBlockData(null);
     setActiveDroppableId(null);
 
-    // Ensure both active and over are defined before proceeding
     if (!active || !over) {
       return;
     }
 
-    // If dropped on itself (same ID and same source type), do nothing for reordering.
     if (
       active.id === over.id &&
       active.data.current?.type === over.data.current?.type
     ) {
       return;
     }
-    // At this point, 'over' is guaranteed to be non-null.
 
     const activeData = active.data.current;
-    const overData = over.data.current; // Safe to access over.data
+    const overData = over.data.current;
 
-    // Determine sourceType more reliably from activeData if possible
     let sourceType: "available" | "workspace" | null = null;
     let draggedBlock: Block | null = (activeData?.block as Block) || null;
 
@@ -434,13 +385,11 @@ const Game = ({
     } else if (activeData?.type === "block-list-item") {
       sourceType = "available";
     } else {
-      // Fallback if type not in data
       if (workspace.find((b) => b?.id === active.id)) sourceType = "workspace";
       else if (availableBlockSlots.find((b) => b?.id === active.id))
         sourceType = "available";
     }
     if (!draggedBlock) {
-      // If not on activeData, try to find it using the activeId and sourceType
       if (sourceType === "workspace")
         draggedBlock = workspace.find((b) => b?.id === active.id) || null;
       else if (sourceType === "available")
@@ -449,9 +398,6 @@ const Game = ({
     }
 
     if (!draggedBlock || !sourceType) {
-      console.warn(
-        "handleDragEnd: Could not identify dragged block or source type."
-      );
       return;
     }
 
@@ -560,19 +506,6 @@ const Game = ({
         isTargetAnExistingBlock = false;
       }
 
-      console.log("[DragEnd - Workspace Reorder]", {
-        activeId: active.id, // e.g., workspace-block-XYZ-0
-        draggedBlockActualId, // XYZ
-        overId: over.id, // e.g., placeholder-1 OR workspace-block-droptarget-ABC-1
-        overData,
-        sourceType,
-        draggedBlock,
-        oldIndex,
-        newIndex,
-        isTargetAnExistingBlock,
-        currentWorkspace: [...workspace],
-      });
-
       if (
         oldIndex !== -1 &&
         newIndex !== -1 &&
@@ -587,20 +520,14 @@ const Game = ({
           workspace[newIndex] &&
           workspace[oldIndex]?.id !== workspace[newIndex]?.id
         ) {
-          console.log("[DragEnd - Workspace Reorder] Performing SWAP.");
           const swappedWorkspace = [...workspace];
           const temp = swappedWorkspace[newIndex];
           swappedWorkspace[newIndex] = swappedWorkspace[oldIndex];
           swappedWorkspace[oldIndex] = temp;
           finalWorkspaceItems = swappedWorkspace;
         } else {
-          console.log(
-            "[DragEnd - Workspace Reorder] Performing arrayMove (insert/shift)."
-          );
-          // Ensure dragged item is correctly identified for arrayMove if oldIndex was based on its content id
           const itemToMove = workspace[oldIndex];
           if (itemToMove) {
-            //Should always be true if oldIndex is valid
             const tempWorkspace = [...workspace];
             tempWorkspace.splice(oldIndex, 1); // Remove item from old spot
             tempWorkspace.splice(newIndex, 0, itemToMove); // Insert item at new spot
@@ -610,33 +537,12 @@ const Game = ({
               finalWorkspaceItems.push(null);
           } else {
             finalWorkspaceItems = [...workspace]; // Fallback, should not happen
-            console.error(
-              "[DragEnd - Workspace Reorder] Error: Could not find item to move for arrayMove variant."
-            );
           }
         }
 
-        console.log("[DragEnd - Workspace Reorder] After operation:", {
-          finalWorkspaceItems: [...finalWorkspaceItems],
-        });
         actions.setWorkspace(finalWorkspaceItems);
         actions.selectBlock(draggedBlockActualId); // Select the MOVED block by its actual ID
         setJustDraggedBlockId(draggedBlockActualId);
-      } else {
-        console.log(
-          "[DragEnd - Workspace Reorder] Condition not met for move:",
-          {
-            oldIndex,
-            newIndex,
-            maxBlocks,
-            isTargetAnExistingBlock,
-            condition:
-              oldIndex !== -1 &&
-              newIndex !== -1 &&
-              oldIndex !== newIndex &&
-              newIndex < maxBlocks,
-          }
-        );
       }
       return;
     }
@@ -701,9 +607,6 @@ const Game = ({
       }
 
       if (targetSlotIndexAvailable === -1) {
-        console.warn(
-          "[DragEnd - Ws to Avail] Could not determine target slot in AvailableBlocks."
-        );
         return;
       }
 
@@ -714,39 +617,21 @@ const Game = ({
       );
 
       if (originalIndexInWorkspace === -1) {
-        console.error(
-          "[DragEnd - Ws to Avail] Dragged block not found in workspace for removal."
-        );
         return;
       }
 
       const blockAtTargetInAvailable =
         newAvailableSlots[targetSlotIndexAvailable];
 
-      console.log("[DragEnd - Ws to Avail] Pre-decision:", {
-        targetSlotIndexAvailable,
-        blockAtTargetInAvailableId: blockAtTargetInAvailable?.id,
-        isTargetSlotInBounds:
-          targetSlotIndexAvailable < newAvailableSlots.length,
-        draggedBlockId: draggedBlock.id,
-        originalIndexInWorkspace,
-      });
-
       if (
         blockAtTargetInAvailable &&
         targetSlotIndexAvailable < newAvailableSlots.length
       ) {
         // SWAP scenario
-        console.log(
-          "[DragEnd - Ws to Avail] Performing SWAP with Available Block."
-        );
         newAvailableSlots[targetSlotIndexAvailable] = draggedBlock; // Place workspace block in available slot
         newWorkspace[originalIndexInWorkspace] = blockAtTargetInAvailable; // Place available block in workspace slot
       } else {
         // MOVE to empty/placeholder in AvailableBlocks, or append
-        console.log(
-          "[DragEnd - Ws to Avail] Moving to empty/placeholder or appending in Available."
-        );
         if (
           targetSlotIndexAvailable < newAvailableSlots.length &&
           newAvailableSlots[targetSlotIndexAvailable] === null
@@ -810,10 +695,6 @@ const Game = ({
         targetIndexInWorkspace === -1 ||
         targetIndexInWorkspace >= maxBlocks
       ) {
-        console.warn(
-          "[DragEnd - Avail to Ws] Could not determine valid target slot in Workspace or workspace full/invalid index.",
-          { targetIndexInWorkspace, maxBlocks }
-        );
         return;
       }
 
@@ -824,33 +705,17 @@ const Game = ({
       );
 
       if (originalIndexInAvailable === -1) {
-        console.error(
-          "[DragEnd - Avail to Ws] Dragged block not found in availableBlockSlots for removal."
-        );
         return;
       }
 
       const blockToSwapFromWorkspace = newWorkspace[targetIndexInWorkspace];
 
-      console.log("[DragEnd - Avail to Ws] Pre-decision:", {
-        targetIndexInWorkspace,
-        blockToSwapFromWorkspaceId: blockToSwapFromWorkspace?.id,
-        draggedBlockId: draggedBlock.id,
-        originalIndexInAvailable,
-      });
-
       if (blockToSwapFromWorkspace) {
         // SWAP scenario: Target in workspace is an existing block
-        console.log(
-          "[DragEnd - Avail to Ws] Performing SWAP with Workspace Block."
-        );
         newWorkspace[targetIndexInWorkspace] = draggedBlock; // Place available block in workspace slot
         newAvailable[originalIndexInAvailable] = blockToSwapFromWorkspace; // Place workspace block in available slot
       } else {
         // MOVE to empty/placeholder in Workspace
-        console.log(
-          "[DragEnd - Avail to Ws] Moving to empty/placeholder in Workspace."
-        );
         newWorkspace[targetIndexInWorkspace] = draggedBlock;
         newAvailable[originalIndexInAvailable] = null; // Clear original available slot
       }
@@ -861,13 +726,6 @@ const Game = ({
       setJustDraggedBlockId(draggedBlock.id);
       return;
     }
-
-    console.log("handleDragEnd: No specific D&D scenario matched.", {
-      active,
-      over,
-      sourceType,
-      draggedBlock,
-    });
   };
 
   return (
