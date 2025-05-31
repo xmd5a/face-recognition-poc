@@ -298,3 +298,100 @@ body {
     transparent 100%
   );
 }
+
+/* Custom styles for Markdown content within .prose in hints */
+.prose {
+  --tw-prose-body: #e5e5e5;
+  --tw-prose-headings: #e5e5e5;
+  --tw-prose-lead: #e0e0e0;
+  --tw-prose-links: #87cefa;
+  --tw-prose-bold: #ffffff;
+  --tw-prose-counters: #e5e5e5;
+  --tw-prose-bullets: #e5e5e5;
+  --tw-prose-hr: rgba(229, 229, 229, 0.3);
+  --tw-prose-quotes: #d0d0d0;
+  --tw-prose-quote-borders: rgba(229, 229, 229, 0.2);
+  --tw-prose-captions: rgba(200, 200, 200, 0.7);
+  --tw-prose-code: #e5e5e5;
+  --tw-prose-pre-code: #e5e5e5;
+  --tw-prose-pre-bg: rgba(50, 50, 50, 0.3);
+  --tw-prose-th-borders: rgba(150, 150, 150, 0.5);
+  --tw-prose-td-borders: rgba(100, 100, 100, 0.5);
+
+  &
+    :where(p, li, h1, h2, h3, strong, em, a, blockquote, code):not(
+      :where([class~=\"not-prose\"] *)
+    ) {
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+    letter-spacing: 0.05em;
+  }
+}
+
+/* Style dla H1 */
+.prose :where(h1):not(:where([class~=\"not-prose\"] *)) {
+  color: var(--tw-prose-headings, #e5e5e5);
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 0.75em;
+}
+
+/* Style dla H3 */
+.prose :where(h3):not(:where([class~=\"not-prose\"] *)) {
+  color: var(--tw-prose-headings, #e5e5e5);
+  font-weight: 600;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+}
+
+/* Pierwszy akapit */
+.prose :where(p:first-of-type):not(:where([class~=\"not-prose\"] *)) {
+  color: #00dd00;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+/* Pozostałe akapity */
+.prose :where(p):not(:where([class~=\"not-prose\"] *)):not(:first-of-type) {
+  color: var(--tw-prose-body, #e5e5e5);
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+/* Style dla list */
+.prose :where(ul):not(:where([class~=\"not-prose\"] *)),
+.prose :where(ol):not(:where([class~=\"not-prose\"] *)) {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+  padding-left: 1.5em;
+}
+
+.prose :where(ul > li):not(:where([class~=\"not-prose\"] *))::marker {
+  color: var(--tw-prose-bullets, #e5e5e5);
+}
+
+.prose :where(ol > li):not(:where([class~=\"not-prose\"] *))::marker {
+  color: var(--tw-prose-counters, #e5e5e5);
+  font-weight: 600;
+}
+
+.prose :where(li):not(:where([class~=\"not-prose\"] *)) {
+  margin-top: 0.3em;
+  margin-bottom: 0.3em;
+  padding-left: 0.25em;
+  color: var(--tw-prose-body, #e5e5e5);
+}
+
+.prose :where(strong):not(:where([class~=\"not-prose\"] *)) {
+  color: var(--tw-prose-bold, #ffffff);
+  font-weight: 700;
+}
+
+.prose :where(em):not(:where([class~=\"not-prose\"] *)) {
+  color: #d0d0d0;
+}
+
+.prose :where(hr):not(:where([class~=\"not-prose\"] *)) {
+  border-color: var(--tw-prose-hr, rgba(229, 229, 229, 0.3));
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}

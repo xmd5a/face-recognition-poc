@@ -214,7 +214,7 @@ const predefinedScenarios: ScenarioDetails[] = [
     availableBlockIds: ["1", "17", "2", "3", "9", "4", "5", "6", "8"], // 9 available
     solution: ["1", "17", "2", "3", "4", "5", "6"], // 7 required
     required: 7,
-    hint: `Arrange the functions in the correct order to perform the code analysis, then click the 'compile' button.\n\n# Simple Face ID Check\nThis task involves processing an image to verify an identity. Consider the typical stages: initial input, preparation, core analysis, and final output.`,
+    hint: `Arrange the functions in the correct order to perform the code analysis, then click the 'compile' button.\n\n---\n### Simple Face ID Check\nThis task involves processing an image to **verify an identity**. Consider the typical stages:\n*   **Input & Preparation**: How is data initially handled and made ready for processing?\n*   **Core Analysis**: What are the main steps for analyzing facial features?\n*   **Output & Logging**: How is the final result determined and recorded?`,
   },
   {
     sid: "data_integrity_check",
@@ -222,7 +222,7 @@ const predefinedScenarios: ScenarioDetails[] = [
     availableBlockIds: ["11", "17", "24", "18", "7", "20"], // 6 available
     solution: ["11", "17", "24", "7"], // 4 required
     required: 4,
-    hint: `Arrange the functions in the correct order to perform the code analysis, then click the 'compile' button.\n\n# Data Integrity Check\nThe goal is to ensure the data is correct and valid. Think about the sequence of operations needed from obtaining data to confirming its state.`,
+    hint: `Arrange the functions in the correct order to perform the code analysis, then click the 'compile' button.\n\n---\n### Data Integrity Check\nThe goal is to ensure the data is **correct and valid**. Think about the general sequence:\n1.  **Data Acquisition**: How is the data initially obtained?\n2.  **Format Validation**: Is the structure of the data as expected?\n3.  **Content Verification**: Does the data itself make sense and meet integrity criteria?\n4.  **Reporting Status**: How are the findings communicated?`,
   },
   {
     sid: "standard_db_maintenance",
@@ -230,7 +230,7 @@ const predefinedScenarios: ScenarioDetails[] = [
     availableBlockIds: ["25", "15", "26", "27", "13", "7", "30", "29"],
     solution: ["25", "15", "26", "13", "7"],
     required: 5,
-    hint: `Arrange the functions in the correct order to perform the code analysis, then click the 'compile' button.\n\n# Standard DB Maintenance\nThis scenario focuses on common database operations. What are the fundamental steps before and after modifying database records?`,
+    hint: `Arrange the functions in the correct order to perform the code analysis, then click the 'compile' button.\n\n---\n### Standard DB Maintenance\nThis scenario focuses on common **database operations**. What are the *fundamental phases* involved?\n*   **Pre-Modification**: What preparatory actions are typically needed *before* changing data?\n*   **Data Modification**: The core step of altering database records.\n*   **Post-Modification**: What actions usually follow *after* the data has been updated?`,
   },
 ];
 
