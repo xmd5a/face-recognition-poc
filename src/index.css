@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer utilities {
   .animate-scanline {
@@ -18,6 +16,91 @@
       var(--tw-gradient-to) 100%
     );
   }
+}
+
+/* Matrix animation */
+@keyframes matrixFade {
+  0% {
+    color: rgb(255, 255, 255);
+    opacity: 1;
+  }
+  50% {
+    color: rgb(0, 255, 0);
+    opacity: 0.8;
+  }
+  100% {
+    color: rgb(255, 255, 255);
+    opacity: 0;
+  }
+}
+
+@keyframes matrixAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.matrix-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.matrix-character {
+  font-size: 1.2rem;
+  line-height: 1;
+  animation: matrixFade 2s forwards;
+  animation-delay: var(--delay);
+  pointer-events: none;
+  user-select: none;
+}
+
+.matrix-character.new {
+  animation: matrixAppear 0.5s forwards, matrixFade 2s forwards;
+}
+
+/* CRT effect */
+.crt::before {
+  content: " ";
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(
+      90deg,
+      rgba(255, 0, 0, 0.06),
+      rgba(0, 255, 0, 0.02),
+      rgba(0, 0, 255, 0.06)
+    );
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.crt::after {
+  content: " ";
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: rgba(18, 16, 16, 0.1);
+  opacity: 0;
+  z-index: 100;
+  pointer-events: none;
+  animation: flicker 0.15s infinite;
 }
 
 @keyframes scanline {
@@ -115,4 +198,72 @@ body {
 .terminal-text {
   text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
   letter-spacing: 0.05em;
+}
+
+/* Block styles */
+.block-base {
+  background-color: rgba(0, 255, 0, 0.05);
+  border: 1px solid rgba(0, 255, 0, 0.2);
+}
+
+.block-base:hover {
+  background-color: rgba(0, 255, 0, 0.1);
+}
+
+.block-highlighted {
+  background-color: rgba(0, 255, 0, 0.2);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.block-selected {
+  background-color: rgb(0, 255, 0);
+  border: 1px solid rgb(0, 255, 0);
+  color: black;
+  font-weight: 500;
+}
+
+/* Column styles */
+.column-active {
+  position: relative;
+  z-index: 2;
+  border: 1px solid rgba(0, 255, 0, 0.5);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 255, 0, 0.05) 0%,
+    rgba(0, 255, 0, 0.02) 100%
+  );
+  box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.05);
+}
+
+.column-inactive {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Block description styles */
+.block-description {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.4) 0%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  border-top: 1px solid rgba(0, 255, 0, 0.2);
+  box-shadow: inset 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.block-description::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 255, 0, 0.2) 20%,
+    rgba(0, 255, 0, 0.2) 80%,
+    transparent 100%
+  );
 }

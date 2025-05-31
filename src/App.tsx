@@ -1,5 +1,5 @@
 import Game from "./components/Game";
-import { type Block } from "./components/BlockList";
+import type { Block } from "./components/BlockList";
 
 const exampleBlocks: Block[] = [
   {
@@ -12,7 +12,11 @@ const exampleBlocks: Block[] = [
     name: "resizeImage()",
     description: "Resizes the image to a standard format.",
   },
-  { id: "3", name: "detectFace()", description: "Detects faces in the image." },
+  {
+    id: "3",
+    name: "detectFace()",
+    description: "Detects faces in the image.",
+  },
   {
     id: "4",
     name: "extractFeatures()",
@@ -23,8 +27,16 @@ const exampleBlocks: Block[] = [
     name: "compareWithDatabase()",
     description: "Compares with known faces database.",
   },
-  { id: "6", name: "getIdentity()", description: "Determines identity." },
-  { id: "7", name: "logResult()", description: "Logs the result." },
+  {
+    id: "6",
+    name: "getIdentity()",
+    description: "Determines identity.",
+  },
+  {
+    id: "7",
+    name: "logResult()",
+    description: "Logs the result.",
+  },
   {
     id: "8",
     name: "displayResult()",
@@ -44,12 +56,12 @@ Arrange the blocks to create a face recognition pipeline. The pipeline should:
 **Tip:** Start with image loading and preprocessing before face detection.
 `;
 
-function App() {
+const App = () => {
   return (
-    <div className="min-h-screen bg-[#1A1A1A]">
+    <div className="min-h-screen bg-[#1A1A1A] text-terminal-green crt">
       <Game availableBlocks={exampleBlocks} maxBlocks={5} hint={hint} />
     </div>
   );
-}
+};
 
 export default App;

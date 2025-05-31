@@ -19,28 +19,59 @@ export const useKeyboardNavigation = ({
   onCompile,
 }: UseKeyboardNavigationProps) => {
   const [activeColumn, setActiveColumn] = useState<Column>("blocks");
-  const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [indices, setIndices] = useState({
+    blocks: 0,
+    workspace: 0,
+  });
+
+  // Helper function to get the current list and its max index
+  const getCurrentListInfo = (column: Column) => {
+    const list = column === "blocks" ? availableBlocks : workspace;
+    const maxIndex = Math.max(0, list.length - 1);
+    return { list, maxIndex };
+  };
+
+  // Helper function to ensure index is within bounds for the given column
+  const getValidIndex = (index: number, column: Column) => {
+    const { maxIndex } = getCurrentListInfo(column);
+    return Math.min(Math.max(0, index), maxIndex);
+  };
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      const currentList =
-        activeColumn === "blocks" ? availableBlocks : workspace;
-      const maxIndex = currentList.length - 1;
+      if (activeColumn === "info") {
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          setActiveColumn("workspace");
+          const newIndex = getValidIndex(indices.workspace, "workspace");
+          setIndices((prev) => ({ ...prev, workspace: newIndex }));
+          const block = workspace[newIndex];
+          if (block) onBlockSelect(block);
+        }
+        return;
+      }
+
+      const { list, maxIndex } = getCurrentListInfo(activeColumn);
+      let newIndex: number;
 
       switch (event.key) {
         case "ArrowUp":
           event.preventDefault();
-          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : maxIndex));
-          if (currentList[selectedIndex]) {
-            onBlockSelect(currentList[selectedIndex]);
+          newIndex =
+            indices[activeColumn] > 0 ? indices[activeColumn] - 1 : maxIndex;
+          setIndices((prev) => ({ ...prev, [activeColumn]: newIndex }));
+          if (list[newIndex]) {
+            onBlockSelect(list[newIndex]);
           }
           break;
 
         case "ArrowDown":
           event.preventDefault();
-          setSelectedIndex((prev) => (prev < maxIndex ? prev + 1 : 0));
-          if (currentList[selectedIndex]) {
-            onBlockSelect(currentList[selectedIndex]);
+          newIndex =
+            indices[activeColumn] < maxIndex ? indices[activeColumn] + 1 : 0;
+          setIndices((prev) => ({ ...prev, [activeColumn]: newIndex }));
+          if (list[newIndex]) {
+            onBlockSelect(list[newIndex]);
           }
           break;
 
@@ -48,10 +79,10 @@ export const useKeyboardNavigation = ({
           event.preventDefault();
           if (activeColumn === "workspace") {
             setActiveColumn("blocks");
-            setSelectedIndex(0);
-          } else if (activeColumn === "info") {
-            setActiveColumn("workspace");
-            setSelectedIndex(0);
+            const newIndex = getValidIndex(indices.blocks, "blocks");
+            if (availableBlocks[newIndex]) {
+              onBlockSelect(availableBlocks[newIndex]);
+            }
           }
           break;
 
@@ -59,29 +90,30 @@ export const useKeyboardNavigation = ({
           event.preventDefault();
           if (activeColumn === "blocks") {
             setActiveColumn("workspace");
-            setSelectedIndex(0);
+            const newIndex = getValidIndex(indices.workspace, "workspace");
+            if (workspace[newIndex]) {
+              onBlockSelect(workspace[newIndex]);
+            }
           } else if (activeColumn === "workspace") {
             setActiveColumn("info");
-            setSelectedIndex(0);
+            onBlockSelect({} as Block); // Clear selection
           }
           break;
 
         case "e":
         case "E":
           event.preventDefault();
-          if (activeColumn === "blocks" && currentList[selectedIndex]) {
-            // Move block to workspace
-            const block = currentList[selectedIndex];
+          if (activeColumn === "blocks" && list[indices[activeColumn]]) {
+            const block = list[indices[activeColumn]];
             if (!workspace.find((b) => b.id === block.id)) {
               onWorkspaceChange([...workspace, block]);
             }
           } else if (
             activeColumn === "workspace" &&
-            currentList[selectedIndex]
+            list[indices[activeColumn]]
           ) {
-            // Remove block from workspace
             const newWorkspace = workspace.filter(
-              (_, index) => index !== selectedIndex
+              (_, index) => index !== indices[activeColumn]
             );
             onWorkspaceChange(newWorkspace);
           }
@@ -98,7 +130,7 @@ export const useKeyboardNavigation = ({
     },
     [
       activeColumn,
-      selectedIndex,
+      indices,
       availableBlocks,
       workspace,
       onBlockSelect,
@@ -116,6 +148,8 @@ export const useKeyboardNavigation = ({
 
   return {
     activeColumn,
-    selectedIndex,
+    setActiveColumn,
+    indices,
+    selectedIndex: indices[activeColumn as keyof typeof indices] || 0,
   };
 };
