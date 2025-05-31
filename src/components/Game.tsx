@@ -747,33 +747,15 @@ const Game = ({
           </DndContext>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <button
-            onClick={actions.compile}
-            disabled={currentBlocksCount !== maxBlocks || isCompiling}
-            className={`w-full py-3 rounded font-mono text-lg transition-colors ${
-              currentBlocksCount !== maxBlocks || isCompiling
-                ? "block-base cursor-not-allowed text-opacity-50"
-                : "block-base hover:block-selected"
-            }`}
-          >
-            {isCompiling
-              ? "Compiling..."
-              : currentBlocksCount === maxBlocks
-              ? "Compile"
-              : `Need ${maxBlocks - currentBlocksCount} more block${
-                  maxBlocks - currentBlocksCount !== 1 ? "s" : ""
-                }`}
-          </button>
-
-          <div className="h-[25vh]">
-            <Terminal
-              isCompiling={isCompiling}
-              errors={errors}
-              onReset={actions.reset}
-              onCompile={actions.compile}
-            />
-          </div>
+        <div className="h-[25vh] mt-4">
+          <Terminal
+            isCompiling={isCompiling}
+            errors={errors}
+            onReset={actions.reset}
+            onCompile={actions.compile}
+            currentBlocksCount={currentBlocksCount}
+            maxBlocks={maxBlocks}
+          />
         </div>
       </div>
     </GameLayout>
