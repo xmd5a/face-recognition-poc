@@ -7,7 +7,7 @@ interface UseKeyboardNavigationProps {
   availableBlocks: Block[];
   workspace: Block[];
   selectedBlockId: string | null;
-  onBlockSelect: (block: Block) => void;
+  onBlockSelect: (block: Block | null) => void;
   onWorkspaceChange: (blocks: Block[]) => void;
   onCompile: () => void;
 }
@@ -95,17 +95,46 @@ export const useKeyboardNavigation = ({
         case "E":
           event.preventDefault();
           if (list[currentIndex]) {
-            const block = list[currentIndex];
+            const blockToMove = list[currentIndex];
             if (
               activeColumn === "blocks" &&
-              !workspace.find((b) => b.id === block.id)
+              !workspace.find((b) => b.id === blockToMove.id)
             ) {
-              onWorkspaceChange([...workspace, block]);
+              onWorkspaceChange([...workspace, blockToMove]);
+              const newAvailableBlocks = availableBlocks.filter(
+                (b) => b.id !== blockToMove.id
+              );
+              let newBlocksIndex = currentIndex;
+              if (
+                currentIndex >= newAvailableBlocks.length &&
+                newAvailableBlocks.length > 0
+              ) {
+                newBlocksIndex = newAvailableBlocks.length - 1;
+              }
+              setIndices((prev) => ({ ...prev, blocks: newBlocksIndex }));
+              if (newAvailableBlocks.length > 0) {
+                onBlockSelect(newAvailableBlocks[newBlocksIndex]);
+              } else {
+                onBlockSelect(null);
+              }
             } else if (activeColumn === "workspace") {
               const newWorkspace = workspace.filter(
                 (_, index) => index !== currentIndex
               );
               onWorkspaceChange(newWorkspace);
+              let newWorkspaceIndex = currentIndex;
+              if (
+                currentIndex >= newWorkspace.length &&
+                newWorkspace.length > 0
+              ) {
+                newWorkspaceIndex = newWorkspace.length - 1;
+              }
+              setIndices((prev) => ({ ...prev, workspace: newWorkspaceIndex }));
+              if (newWorkspace.length > 0) {
+                onBlockSelect(newWorkspace[newWorkspaceIndex]);
+              } else {
+                onBlockSelect(null);
+              }
             }
           }
           break;
@@ -120,7 +149,7 @@ export const useKeyboardNavigation = ({
       }
 
       if (
-        newIndex !== currentIndex ||
+        (newIndex !== currentIndex && event.key !== "e" && event.key !== "E") ||
         event.key === "ArrowLeft" ||
         event.key === "ArrowRight"
       ) {

@@ -14,6 +14,7 @@ interface BlockItemProps {
   isSelected: boolean;
   isKeyboardHighlighted: boolean;
   isMouseHovered: boolean;
+  isKeyboardModeActive: boolean;
   onSelect: (block: Block) => void;
   onDoubleClick?: (block: Block) => void;
 }
@@ -23,6 +24,7 @@ const BlockItem = ({
   isSelected,
   isKeyboardHighlighted,
   isMouseHovered,
+  isKeyboardModeActive,
   onSelect,
   onDoubleClick,
 }: BlockItemProps) => {
@@ -41,12 +43,12 @@ const BlockItem = ({
   };
 
   let blockClass = "block-base";
-  if (isSelected) {
+  if (isKeyboardHighlighted) {
     blockClass = "block-selected";
-  } else if (isKeyboardHighlighted) {
-    blockClass = "block-highlighted";
-  } else if (isMouseHovered) {
-    blockClass = "block-highlighted";
+  } else if (!isKeyboardModeActive) {
+    if (isSelected || isMouseHovered) {
+      blockClass = "block-selected";
+    }
   }
 
   return (
@@ -108,6 +110,7 @@ interface BlockListProps {
   onBlockSelect: (block: Block) => void;
   onBlockMove?: (block: Block) => void;
   isKeyboardModeActive: boolean;
+  activeColumn: string;
 }
 
 const BlockList = ({
@@ -117,6 +120,7 @@ const BlockList = ({
   onBlockSelect,
   onBlockMove,
   isKeyboardModeActive,
+  activeColumn,
 }: BlockListProps) => {
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
 
@@ -162,13 +166,20 @@ const BlockList = ({
           >
             <BlockItem
               block={block}
-              isSelected={block.id === selectedBlockId}
+              isSelected={
+                activeColumn === "blocks" && block.id === selectedBlockId
+              }
               isKeyboardHighlighted={
-                isKeyboardModeActive && index === selectedIndex
+                activeColumn === "blocks" &&
+                isKeyboardModeActive &&
+                index === selectedIndex
               }
               isMouseHovered={
-                !isKeyboardModeActive && hoveredBlockId === block.id
+                activeColumn === "blocks" &&
+                !isKeyboardModeActive &&
+                hoveredBlockId === block.id
               }
+              isKeyboardModeActive={isKeyboardModeActive}
               onSelect={onBlockSelect}
               onDoubleClick={handleBlockMove}
             />

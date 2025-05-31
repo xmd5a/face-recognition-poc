@@ -55,7 +55,7 @@ const Game = ({
     availableBlocks: availableBlocks,
     workspace: workspace.filter(Boolean) as Block[],
     selectedBlockId: selectedBlockId,
-    onBlockSelect: (block) => actions.selectBlock(block.id),
+    onBlockSelect: (block) => actions.selectBlock(block ? block.id : null),
     onWorkspaceChange: (newBlocks) => {
       const newSparseWorkspace = new Array(maxBlocks).fill(null);
       newBlocks.forEach((b, i) => {
@@ -65,6 +65,21 @@ const Game = ({
     },
     onCompile: actions.compile,
   });
+
+  // Effect to handle active column changes
+  useEffect(() => {
+    if (
+      activeColumn !== "blocks" &&
+      selectedBlockId &&
+      availableBlocks.find((b) => b.id === selectedBlockId)
+    ) {
+      actions.selectBlock(null);
+    }
+    // If workspace is active and no block there is selected, but one was selected in availableBlocks,
+    // and that block is now in workspace, select it.
+    // This might be too specific or need refinement depending on exact desired UX when switching to workspace
+    // with a previously selected block that just moved there.
+  }, [activeColumn, selectedBlockId, actions, availableBlocks, workspace]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -193,6 +208,8 @@ const Game = ({
     if (!draggedBlock) return;
 
     const newWorkspace = [...workspace];
+    let blockMovedToWorkspace = false;
+    const movedBlockId = active.id as string;
 
     const currentIndexInWorkspace = workspace.findIndex(
       (b) => b?.id === active.id
@@ -203,10 +220,6 @@ const Game = ({
 
     if (over.id === "available") {
       // Block dragged back to available list.
-      // Its removal from newWorkspace (by setting its slot to null earlier)
-      // and the subsequent call to actions.setWorkspace(newWorkspace)
-      // will make useGameState update the availableBlocks list correctly.
-      // No explicit action needed here beyond what actions.setWorkspace does.
     } else if (over.id.toString().startsWith("placeholder-")) {
       const targetIndex = parseInt(over.id.toString().split("-")[1]);
 
@@ -214,9 +227,12 @@ const Game = ({
         newWorkspace[targetIndex] &&
         newWorkspace[targetIndex]!.id !== active.id
       ) {
+        // If there's a different block in the target slot, it should be moved back to available or handled.
+        // For simplicity, we are just clearing the slot here. This might need more sophisticated handling.
         newWorkspace[targetIndex] = null;
       }
       newWorkspace[targetIndex] = draggedBlock;
+      blockMovedToWorkspace = true;
     } else if (
       over.id === "workspace" &&
       workspace.filter(Boolean).length < maxBlocks
@@ -224,9 +240,21 @@ const Game = ({
       const firstEmptyIndex = newWorkspace.findIndex((slot) => slot === null);
       if (firstEmptyIndex !== -1) {
         newWorkspace[firstEmptyIndex] = draggedBlock;
+        blockMovedToWorkspace = true;
       }
     }
     actions.setWorkspace(newWorkspace);
+
+    if (blockMovedToWorkspace) {
+      actions.selectBlock(movedBlockId);
+      // Optionally, set active column to workspace if a block is dropped there
+      // setActiveColumn('workspace');
+    } else if (over.id === "available") {
+      // If dragged back to available, ensure selection is cleared or handled by keyboard nav state
+      if (selectedBlockId === movedBlockId) {
+        actions.selectBlock(null); // Or select next available if that's the desired UX
+      }
+    }
   };
 
   const getActiveBlock = () => {
@@ -288,6 +316,7 @@ const Game = ({
                     }
                   }}
                   isKeyboardModeActive={isKeyboardModeActive}
+                  activeColumn={activeColumn}
                 />
               </SortableContext>
             </div>
@@ -338,7 +367,7 @@ const Game = ({
             className={`w-full py-3 rounded font-mono text-lg transition-colors ${
               currentBlocksCount !== maxBlocks || isCompiling
                 ? "block-base cursor-not-allowed text-opacity-50"
-                : "block-highlighted hover:block-selected"
+                : "block-base hover:block-selected"
             }`}
           >
             {isCompiling
