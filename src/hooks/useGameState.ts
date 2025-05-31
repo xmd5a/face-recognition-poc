@@ -8,6 +8,7 @@ interface GameState {
   errors: string[];
   availableBlockSlots: (Block | null)[];
   levelHint: string;
+  canCompileAfterAttempt: boolean;
 }
 
 interface UseGameStateProps {
@@ -32,6 +33,7 @@ const useGameState = ({
       b ? { ...b } : null
     ),
     levelHint: hint,
+    canCompileAfterAttempt: true,
   }));
 
   const selectBlock = useCallback((blockId: string | null) => {
@@ -39,7 +41,11 @@ const useGameState = ({
   }, []);
 
   const setAvailableBlockSlots = useCallback((newSlots: (Block | null)[]) => {
-    setGameState((prev) => ({ ...prev, availableBlockSlots: newSlots }));
+    setGameState((prev) => ({
+      ...prev,
+      availableBlockSlots: newSlots,
+      canCompileAfterAttempt: true,
+    }));
   }, []);
 
   const setWorkspace = useCallback(
@@ -72,6 +78,7 @@ const useGameState = ({
           ...prev,
           workspace: finalWs,
           selectedBlockId: newSelectedBlockId,
+          canCompileAfterAttempt: true,
         };
       });
     },
@@ -79,7 +86,19 @@ const useGameState = ({
   );
 
   const compile = useCallback(() => {
-    setGameState((prev) => ({ ...prev, isCompiling: true, errors: [] }));
+    if (!gameState.canCompileAfterAttempt && !gameState.isCompiling) {
+      console.warn(
+        "Compilation attempt blocked. Workspace change needed or already compiling."
+      );
+      return;
+    }
+    setGameState((prev) => ({
+      ...prev,
+      isCompiling: true,
+      errors: [],
+      typedCode: "",
+      showResult: false,
+    }));
 
     setTimeout(() => {
       const playerWorkspaceBlocks = gameState.workspace.filter(
@@ -87,40 +106,44 @@ const useGameState = ({
       ) as Block[];
       const playerSolutionIds = playerWorkspaceBlocks.map((block) => block.id);
 
+      let currentErrors: string[] = [];
       if (playerSolutionIds.length !== solution.length) {
-        setGameState((prev) => ({
-          ...prev,
-          isCompiling: false,
-          errors: [
-            `Oczekiwano ${solution.length} bloków, otrzymano ${playerSolutionIds.length}.`,
-            `Upewnij się, że wszystkie wymagane sloty w Workspace są zapełnione.`,
-          ],
-        }));
-        return;
-      }
-
-      const errorCount = playerSolutionIds.reduce((count, id, index) => {
-        return id !== solution[index] ? count + 1 : count;
-      }, 0);
-
-      if (errorCount === 0) {
-        setGameState((prev) => ({
-          ...prev,
-          isCompiling: false,
-          errors: [],
-        }));
-      } else {
-        const genericErrorMessages = new Array(errorCount).fill(
-          "An error occurred"
+        currentErrors.push(
+          `Oczekiwano ${solution.length} bloków, otrzymano ${playerSolutionIds.length}.`
         );
-        setGameState((prev) => ({
-          ...prev,
-          isCompiling: false,
-          errors: genericErrorMessages,
-        }));
+        if (playerSolutionIds.length < solution.length) {
+          currentErrors.push(
+            `Upewnij się, że wszystkie wymagane sloty w Workspace są zapełnione.`
+          );
+        }
+      } else {
+        const positionErrorCount = playerSolutionIds.reduce(
+          (count, id, index) => {
+            return id !== solution[index] ? count + 1 : count;
+          },
+          0
+        );
+        if (positionErrorCount > 0) {
+          currentErrors = new Array(positionErrorCount).fill(
+            "An error occurred"
+          );
+        }
       }
+
+      setGameState((prev) => ({
+        ...prev,
+        isCompiling: false,
+        errors: currentErrors,
+        canCompileAfterAttempt: false,
+      }));
     }, 5000);
-  }, [gameState.workspace, solution, maxBlocks]);
+  }, [
+    gameState.workspace,
+    gameState.canCompileAfterAttempt,
+    gameState.isCompiling,
+    solution,
+    maxBlocks,
+  ]);
 
   const reset = useCallback(() => {
     setGameState({
@@ -132,8 +155,9 @@ const useGameState = ({
         b ? { ...b } : null
       ),
       levelHint: hint,
+      canCompileAfterAttempt: true,
     });
-  }, [initialAvailableBlocks, maxBlocks, hint, solution]);
+  }, [initialAvailableBlocks, maxBlocks, hint]);
 
   return {
     ...gameState,

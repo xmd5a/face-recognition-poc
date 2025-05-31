@@ -24,7 +24,7 @@ import {
 } from "../hooks/useKeyboardNavigation";
 import type { Block } from "./BlockList";
 import ReactMarkdown from "react-markdown";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface GameProps {
   availableBlocks: Block[];
@@ -62,6 +62,7 @@ const Game = ({
     availableBlockSlots,
     currentBlocksCount,
     actions,
+    canCompileAfterAttempt,
   } = useGameState({
     initialAvailableBlocks: initialBlocks,
     maxBlocks,
@@ -132,22 +133,28 @@ const Game = ({
     null
   );
 
-  const handleAvailableSlotsChange = (newSlots: (Block | null)[]) => {
-    actions.setAvailableBlockSlots(newSlots);
-  };
+  const handleAvailableSlotsChange = useCallback(
+    (newSlots: (Block | null)[]) => {
+      actions.setAvailableBlockSlots(newSlots);
+    },
+    [actions]
+  );
 
   const { activeColumn, setActiveColumn, indices } = useKeyboardNavigation({
     availableBlockSlots: availableBlockSlots,
     workspace: workspace,
     selectedBlockId: selectedBlockId,
     onBlockSelect: (block) => actions.selectBlock(block ? block.id : null),
-    onWorkspaceChange: (newBlocks) => {
-      const newSparseWorkspace = new Array(maxBlocks).fill(null);
-      newBlocks.forEach((b, i) => {
-        if (i < maxBlocks) newSparseWorkspace[i] = b;
-      });
-      actions.setWorkspace(newSparseWorkspace);
-    },
+    onWorkspaceChange: useCallback(
+      (newBlocks) => {
+        const newSparseWorkspace = new Array(maxBlocks).fill(null);
+        newBlocks.forEach((b, i) => {
+          if (i < maxBlocks) newSparseWorkspace[i] = b;
+        });
+        actions.setWorkspace(newSparseWorkspace);
+      },
+      [actions, maxBlocks]
+    ),
     onAvailableBlocksChange: handleAvailableSlotsChange,
     onCompile: actions.compile,
     blockToMoveInfo,
@@ -747,7 +754,7 @@ const Game = ({
           </DndContext>
         </div>
 
-        <div className="h-[25vh]">
+        <div className="h-[25vh] mt-4">
           <Terminal
             isCompiling={isCompiling}
             errors={errors}
@@ -755,6 +762,7 @@ const Game = ({
             onCompile={actions.compile}
             currentBlocksCount={currentBlocksCount}
             maxBlocks={maxBlocks}
+            canCompileAfterAttempt={canCompileAfterAttempt}
           />
         </div>
       </div>

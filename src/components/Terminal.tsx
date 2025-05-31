@@ -19,6 +19,7 @@ interface TerminalProps {
   onCompile: () => void;
   currentBlocksCount: number;
   maxBlocks: number;
+  canCompileAfterAttempt: boolean;
 }
 
 const Terminal = ({
@@ -28,6 +29,7 @@ const Terminal = ({
   onCompile,
   currentBlocksCount,
   maxBlocks,
+  canCompileAfterAttempt,
 }: TerminalProps) => {
   // const [step, setStep] = useState(0); // No longer needed for sequential compilation messages
   const [hasCompilationAttempted, setHasCompilationAttempted] = useState(false);
@@ -36,6 +38,8 @@ const Terminal = ({
   const [typedCommand, setTypedCommand] = useState("");
   const [typedCode, setTypedCode] = useState("");
   const [showResult, setShowResult] = useState(false);
+  const [showPostErrorPrompt, setShowPostErrorPrompt] = useState(false);
+  const scrollableContainerRef = useRef<HTMLDivElement>(null); // Ref for scrolling
 
   const commandToType = "run compilation.exe --source=latest";
   const mockCode = `
@@ -74,36 +78,47 @@ const Terminal = ({
   const codeTypingIntervalRef = useRef<number | null>(null);
   const resultTimeoutRef = useRef<number | null>(null);
 
+  // Auto-scrolling effect
   useEffect(() => {
+    if (scrollableContainerRef.current) {
+      scrollableContainerRef.current.scrollTop =
+        scrollableContainerRef.current.scrollHeight;
+    }
+  }, [typedCommand, typedCode, showResult, showPostErrorPrompt]); // Scroll on content change
+
+  useEffect(() => {
+    const commandTypingSpeed = 50;
+    const codeTypingSpeed = 20;
+    const charsPerBatch = 4;
+
     if (isCompiling) {
       setHasCompilationAttempted(true);
-      setTypedCommand("");
+      setShowPostErrorPrompt(false);
+      setTypedCommand(""); // Start empty for command typing
       setTypedCode("");
       setShowResult(false);
 
       let currentCommandIndex = 0;
-      const commandTypingSpeed = 50; // ms per char
 
-      // Clear previous intervals/timeouts
       if (commandTypingIntervalRef.current)
         clearInterval(commandTypingIntervalRef.current);
       if (codeTypingIntervalRef.current)
         clearInterval(codeTypingIntervalRef.current);
       if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
 
+      // Start typing the command
       commandTypingIntervalRef.current = window.setInterval(() => {
         if (currentCommandIndex < commandToType.length) {
+          // Append one character at a time for command
           setTypedCommand((prev) => prev + commandToType[currentCommandIndex]);
           currentCommandIndex++;
         } else {
           if (commandTypingIntervalRef.current)
             clearInterval(commandTypingIntervalRef.current);
           commandTypingIntervalRef.current = null;
-          // Start typing the green code after command is done
-          let currentCodeIndex = 0;
-          const codeTypingSpeed = 20; // Faster for code block
-          const charsPerBatch = 4;
 
+          // Command finished, start typing code
+          let currentCodeIndex = 0;
           codeTypingIntervalRef.current = window.setInterval(() => {
             if (currentCodeIndex < mockCode.length) {
               setTypedCode(
@@ -124,6 +139,12 @@ const Terminal = ({
         }
       }, commandTypingSpeed);
 
+      const typingDurationEstimate =
+        commandToType.length * commandTypingSpeed +
+        (mockCode.length / charsPerBatch) * codeTypingSpeed;
+      // Timeout should be less than parent useGameState's 5000ms compile time
+      const actualDisplayTimeout = Math.min(typingDurationEstimate + 200, 4800);
+
       resultTimeoutRef.current = window.setTimeout(() => {
         if (commandTypingIntervalRef.current)
           clearInterval(commandTypingIntervalRef.current);
@@ -131,22 +152,39 @@ const Terminal = ({
           clearInterval(codeTypingIntervalRef.current);
         commandTypingIntervalRef.current = null;
         codeTypingIntervalRef.current = null;
-        // Ensure all command and typed code is shown if cut short
+        // Ensure command and typed code are fully shown if timeout cuts them short
         setTypedCommand(commandToType);
-        // Determine how much code *should* have been typed by now if not fully complete.
-        // This part is tricky to get perfect with the timeout, so for now, just showing what was typed.
-        setShowResult(true);
-      }, 8000); // Align with useGameState's 5000ms, show result just before it flips isCompiling
+        // Set typedCode to its current state, or full if typing was faster than timeout
+        // This ensures that whatever was typed up to this point is rendered before result shows
+        // No, we actually want to let useGameState determine when isCompiling flips, then show full result
+        setShowResult(true); // Ready to show result when isCompiling becomes false
+      }, actualDisplayTimeout);
     } else {
+      // When parent isCompiling is false
+      // Clear any running typing intervals if compilation ended prematurely or was cancelled
       if (commandTypingIntervalRef.current)
         clearInterval(commandTypingIntervalRef.current);
       if (codeTypingIntervalRef.current)
         clearInterval(codeTypingIntervalRef.current);
-      if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
-      // Keep typed content visible if showResult is true
-      if (!showResult) {
+      // Do not clear resultTimeoutRef here, as it might be the one that just fired to set setShowResult
+      commandTypingIntervalRef.current = null;
+      codeTypingIntervalRef.current = null;
+
+      if (hasCompilationAttempted) {
+        setShowResult(true); // Ensure result display is triggered
+        if (errors.length > 0) {
+          setShowPostErrorPrompt(true);
+        } else {
+          setShowPostErrorPrompt(false);
+          // If successful, and we want to reset hasCompilationAttempted for a fresh state:
+          // setHasCompilationAttempted(false); // Optional: reset for next interaction cycle
+        }
+      }
+      // Only clear typed content if not showing a result from a recent attempt
+      if (!showResult && !hasCompilationAttempted) {
         setTypedCommand("");
         setTypedCode("");
+        setShowPostErrorPrompt(false);
       }
     }
 
@@ -157,9 +195,20 @@ const Terminal = ({
         clearInterval(codeTypingIntervalRef.current);
       if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
     };
-  }, [isCompiling, mockCode, commandToType]); // Added dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompiling]); // mockCode, commandToType, errors, hasCompilationAttempted removed to simplify deps and control flow
 
   const allBlocksPlaced = currentBlocksCount === maxBlocks;
+  const isButtonDisabled =
+    !allBlocksPlaced || isCompiling || !canCompileAfterAttempt;
+
+  const shouldShowInitialPromptCursor =
+    !isCompiling && !hasCompilationAttempted && !showPostErrorPrompt;
+  const shouldShowCommandTypingCursor =
+    isCompiling && typedCommand.length < commandToType.length;
+  const shouldShowCodeTypingCursor =
+    isCompiling && typedCommand.length === commandToType.length && !showResult;
+  const shouldShowPostErrorPromptCursor = showPostErrorPrompt && !isCompiling;
 
   return (
     <>
@@ -195,55 +244,75 @@ const Terminal = ({
       <div className="relative h-full bg-black/40 border border-white/10 overflow-hidden flex flex-col">
         {/* MatrixEffect removed */}
         <div className="relative z-50 p-4 flex-grow flex flex-col justify-between">
-          <div className="font-mono text-sm overflow-y-auto h-full max-h-[calc(100%-4rem)] whitespace-pre-wrap break-all">
-            {/* Prompt Area - always visible or contextually shown */}
-            <div className="flex items-center mb-1">
-              <span className="text-terminal-green">adamx@PC:</span>
-              <span className="text-blue-400">~</span>
-              <span className="text-terminal-green">$</span>
-              {isCompiling ? (
-                <span className="ml-2 text-gray-300">{typedCommand}</span>
-              ) : (
-                !showResult && (
-                  <span className="ml-2 w-2 h-4 bg-white cursor-blink inline-block"></span>
-                )
-              )}
-            </div>
-
-            {/* Typed Code Area - only during/after compilation */}
-            {(isCompiling || showResult) && typedCode && (
-              <div className="text-green-400 mt-1">
-                {typedCode}
-                {isCompiling && !typedCommand.endsWith(commandToType) && (
-                  <span className="w-2 h-4 bg-green-400 cursor-blink inline-block ml-1"></span>
-                )}
-                {isCompiling &&
-                  typedCommand.length === commandToType.length &&
-                  !showResult && (
-                    <span className="w-2 h-4 bg-green-400 cursor-blink inline-block ml-1"></span>
+          <div
+            ref={scrollableContainerRef}
+            className="font-mono text-sm overflow-y-auto h-full max-h-[calc(100%-4rem)] whitespace-pre-wrap break-all"
+          >
+            {/* Initial Prompt or Command Typing - always show prompt line if not showing post-error prompt and not success state */}
+            {(!showPostErrorPrompt || isCompiling) &&
+              !(showResult && !isCompiling && errors.length === 0) && (
+                <div className="flex items-baseline mb-1">
+                  <span className="text-terminal-green">adamx@PC:</span>
+                  <span className="text-blue-400">~</span>
+                  <span className="text-terminal-green">$</span>
+                  <span className="ml-2 text-gray-300">{typedCommand}</span>
+                  {shouldShowCommandTypingCursor && (
+                    <span className="w-2 h-3.5 bg-gray-300 cursor-blink inline-block ml-1"></span>
                   )}
-              </div>
-            )}
+                  {shouldShowInitialPromptCursor && (
+                    <span className="ml-2 w-2 h-3.5 bg-white cursor-blink inline-block"></span>
+                  )}
+                </div>
+              )}
 
-            {/* Result Message Area */}
+            {/* Typed Code Area */}
+            {(isCompiling || (showResult && typedCode)) &&
+              typedCode.length > 0 && (
+                <div className="text-green-400 mt-1">
+                  {typedCode}
+                  {shouldShowCodeTypingCursor && (
+                    <span className="w-2 h-3.5 bg-green-400 cursor-blink inline-block ml-1"></span>
+                  )}
+                </div>
+              )}
+
+            {/* Result Message Area OR Post-Error Prompt */}
             {showResult && !isCompiling && (
               <div className="mt-2">
                 {errors.length > 0 ? (
-                  <div className="space-y-1">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
-                      <span className="text-red-400">
-                        Compilation failed: {errors.length} error
-                        {errors.length !== 1 ? "s" : ""}
-                      </span>
+                  <>
+                    <div className="space-y-1">
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
+                        <span className="text-red-400">
+                          Compilation failed: {errors.length} error
+                          {errors.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                    {/* New prompt after error */}
+                    {showPostErrorPrompt && (
+                      <div className="flex items-baseline mt-2 mb-1">
+                        <span className="text-terminal-green">adamx@PC:</span>
+                        <span className="text-blue-400">~</span>
+                        <span className="text-terminal-green">$</span>
+                        {shouldShowPostErrorPromptCursor && (
+                          <span className="ml-2 w-2 h-3.5 bg-white cursor-blink inline-block"></span>
+                        )}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="flex items-center">
                     <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
                     <span className="text-green-400">
                       Compilation Successful!
                     </span>
+                    {/* Optionally, a new prompt after success too, if desired */}
+                    {/* <div className="flex items-baseline mt-2 mb-1">
+                            <span className="text-terminal-green">adamx@PC:</span><span className="text-blue-400">~</span><span className="text-terminal-green">$</span>
+                            <span className="ml-2 w-2 h-3.5 bg-white cursor-blink inline-block"></span>
+                        </div> */}
                   </div>
                 )}
               </div>
@@ -253,14 +322,14 @@ const Terminal = ({
           <div className="mt-auto pt-4 font-mono">
             <button
               onClick={onCompile}
-              disabled={!allBlocksPlaced || isCompiling}
+              disabled={isButtonDisabled}
               className={`w-full sm:w-auto px-4 py-2 rounded text-sm flex items-center justify-center transition-all
                 ${
                   isCompiling
                     ? "text-white button-gradient-compiling cursor-wait"
-                    : !allBlocksPlaced
+                    : !allBlocksPlaced || !canCompileAfterAttempt
                     ? "bg-gray-600 text-gray-400 cursor-not-allowed opacity-60"
-                    : "bg-terminal-green text-white font-semibold border bg-green-400 border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 button-pulse-green"
+                    : "bg-terminal-green text-white font-semibold border border-green-600 hover:bg-green-400 hover:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 button-pulse-green"
                 }
               `}
             >
