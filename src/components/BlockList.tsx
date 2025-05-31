@@ -59,7 +59,7 @@ const PlaceholderItem = ({
         </div>
       ) : (
         <div className="font-mono terminal-text opacity-30 text-sm">
-          empty slot
+          empty block
         </div>
       )}
     </div>
