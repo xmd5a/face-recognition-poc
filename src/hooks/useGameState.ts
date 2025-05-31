@@ -34,6 +34,10 @@ const useGameState = ({
     setGameState((prev) => ({ ...prev, selectedBlockId: blockId }));
   }, []);
 
+  const setAvailableBlocks = useCallback((newBlocks: Block[]) => {
+    setGameState((prev) => ({ ...prev, availableBlocks: newBlocks }));
+  }, []);
+
   const setWorkspace = useCallback(
     (newWorkspace: (Block | null)[]) => {
       setGameState((prev) => {
@@ -109,6 +113,7 @@ const useGameState = ({
     actions: {
       selectBlock,
       setWorkspace,
+      setAvailableBlocks,
       compile,
       reset,
     },

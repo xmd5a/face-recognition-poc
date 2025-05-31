@@ -8,6 +8,7 @@ interface WorkspaceBlockItemProps {
   isSelected: boolean;
   isKeyboardHighlighted: boolean;
   isMarkedForMove: boolean;
+  isGhostDropTarget: boolean;
   onSelect: (blockId: string | null) => void;
 }
 
@@ -16,6 +17,7 @@ const WorkspaceBlockItem = ({
   isSelected,
   isKeyboardHighlighted,
   isMarkedForMove,
+  isGhostDropTarget,
   onSelect,
 }: WorkspaceBlockItemProps) => {
   const {
@@ -41,15 +43,18 @@ const WorkspaceBlockItem = ({
     blockClass = "block-selected";
   }
 
+  const combinedClasses = `
+    p-3 rounded cursor-move transition-all relative
+    ${isDragging ? "opacity-50 z-50 shadow-lg" : "opacity-100"}
+    ${blockClass}
+    ${isGhostDropTarget ? "ghost-drop-target" : ""}
+  `;
+
   return (
     <div
       ref={draggableRef}
       style={style}
-      className={`
-        p-3 rounded cursor-move transition-all relative
-        ${isDragging ? "opacity-50 z-50 shadow-lg" : "opacity-100"}
-        ${blockClass}
-      `}
+      className={combinedClasses.trim()}
       onClick={() => onSelect(block.id)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -70,35 +75,45 @@ interface PlaceholderProps {
   index: number;
   isActive: boolean;
   isGhostDropTarget: boolean;
+  ghostBlockData: Block | null;
 }
 
 const Placeholder = ({
   index,
   isActive,
   isGhostDropTarget,
+  ghostBlockData,
 }: PlaceholderProps) => {
   const { setNodeRef } = useDroppable({
     id: `placeholder-${index}`,
   });
 
-  let borderColor = "border-green-400/20";
-  let bgColor = "bg-transparent";
+  let currentBorderColor = "border-green-400/20";
+  let currentBgColor = "bg-transparent";
 
-  if (isActive) {
-    borderColor = "border-green-400/50";
-    bgColor = "bg-green-400/10";
-  }
-  if (isGhostDropTarget) {
-    borderColor = "border-yellow-400/70";
-    bgColor = "bg-yellow-500/10";
+  if (isActive && !isGhostDropTarget) {
+    currentBorderColor = "border-green-400/50";
+    currentBgColor = "bg-green-400/10";
   }
 
   return (
     <div
       ref={setNodeRef}
-      className={`p-3 rounded cursor-move transition-all relative border-2 border-dashed ${borderColor} ${bgColor}`}
+      className={`p-3 rounded cursor-default transition-all relative border-2 border-dashed 
+                  ${
+                    isGhostDropTarget
+                      ? "ghost-drop-target"
+                      : currentBorderColor + " " + currentBgColor
+                  }
+                  h-[60px] flex items-center justify-center`}
     >
-      <div className="font-mono terminal-text opacity-0">placeholder</div>
+      {isGhostDropTarget && ghostBlockData ? (
+        <div className="font-mono terminal-text opacity-70">
+          {ghostBlockData.name}
+        </div>
+      ) : (
+        <div className="font-mono terminal-text opacity-30">placeholder</div>
+      )}
     </div>
   );
 };
@@ -139,28 +154,17 @@ const WorkspaceArea = ({
           {Array.from({ length: maxBlocks }).map((_, index) => {
             const blockInSlot = workspace[index];
 
-            const isCurrentSlotGhostTargetForPlaceholder =
+            const isGhostTargetForPlaceholderHere =
               ghostTargetInfo?.targetColumn === "workspace" &&
               ghostTargetInfo?.targetIndex === index &&
               ghostTargetInfo?.isTargetPlaceholder;
 
-            const isCurrentSlotGhostTargetForBlock =
+            const isGhostTargetForBlockHere =
               ghostTargetInfo?.targetColumn === "workspace" &&
               ghostTargetInfo?.targetIndex === index &&
               !ghostTargetInfo?.isTargetPlaceholder;
 
-            if (isCurrentSlotGhostTargetForPlaceholder && blockToMoveInfo) {
-              return (
-                <div
-                  key={`ghost-over-placeholder-${index}`}
-                  className="relative m-1 p-3 rounded border-2 border-dashed border-yellow-400/70 bg-yellow-500/10 z-10 flex items-center justify-center"
-                >
-                  <div className="font-mono terminal-text opacity-70">
-                    {blockToMoveInfo.sourceData.name}
-                  </div>
-                </div>
-              );
-            }
+            const ghostDataForDisplay = blockToMoveInfo?.sourceData || null;
 
             if (blockInSlot) {
               const isSelected =
@@ -173,15 +177,14 @@ const WorkspaceArea = ({
 
               const isMarked =
                 blockToMoveInfo?.id === blockInSlot.id &&
-                blockToMoveInfo?.sourceColumn === "workspace" &&
-                activeColumn === "workspace";
+                blockToMoveInfo?.sourceColumn === "workspace";
 
               return (
                 <div key={blockInSlot.id} className="relative">
-                  {isCurrentSlotGhostTargetForBlock && blockToMoveInfo && (
-                    <div className="absolute inset-0 m-1 p-3 rounded border-2 border-dashed border-yellow-400/70 bg-yellow-500/10 z-20 flex items-center justify-center pointer-events-none">
-                      <div className="font-mono terminal-text opacity-70">
-                        {blockToMoveInfo.sourceData.name}
+                  {isGhostTargetForBlockHere && ghostDataForDisplay && (
+                    <div className="block-ghost-preview">
+                      <div className="font-mono terminal-text">
+                        {ghostDataForDisplay.name}
                       </div>
                     </div>
                   )}
@@ -190,6 +193,7 @@ const WorkspaceArea = ({
                     isSelected={isSelected && !isMarked}
                     isKeyboardHighlighted={isKeyboardHighlighted && !isMarked}
                     isMarkedForMove={isMarked}
+                    isGhostDropTarget={isGhostTargetForBlockHere ?? false}
                     onSelect={onSelectBlock}
                   />
                 </div>
@@ -199,9 +203,13 @@ const WorkspaceArea = ({
               <Placeholder
                 key={`placeholder-${index}`}
                 index={index}
-                isActive={activeDroppableId === `placeholder-${index}`}
-                isGhostDropTarget={
-                  isCurrentSlotGhostTargetForPlaceholder ?? false
+                isActive={
+                  activeDroppableId === `placeholder-${index}` &&
+                  !isGhostTargetForPlaceholderHere
+                }
+                isGhostDropTarget={isGhostTargetForPlaceholderHere ?? false}
+                ghostBlockData={
+                  isGhostTargetForPlaceholderHere ? ghostDataForDisplay : null
                 }
               />
             );

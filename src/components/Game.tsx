@@ -73,9 +73,13 @@ const Game = ({
   const [ghostTargetInfo, setGhostTargetInfo] =
     useState<GhostTargetInfo | null>(null);
 
+  const handleAvailableBlocksChange = (newBlocks: Block[]) => {
+    actions.setAvailableBlocks(newBlocks);
+  };
+
   const { activeColumn, setActiveColumn, indices } = useKeyboardNavigation({
     availableBlocks: availableBlocks,
-    workspace: workspace.filter(Boolean) as Block[],
+    workspace: workspace,
     selectedBlockId: selectedBlockId,
     onBlockSelect: (block) => actions.selectBlock(block ? block.id : null),
     onWorkspaceChange: (newBlocks) => {
@@ -85,6 +89,7 @@ const Game = ({
       });
       actions.setWorkspace(newSparseWorkspace);
     },
+    onAvailableBlocksChange: handleAvailableBlocksChange,
     onCompile: actions.compile,
     blockToMoveInfo,
     setBlockToMoveInfo,

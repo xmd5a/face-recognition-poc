@@ -224,6 +224,35 @@ body {
   box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
+.ghost-drop-target {
+  outline: 2px dashed rgba(255, 255, 0, 0.7); /* Żółta przerywana ramka dla celu */
+  background-color: rgba(
+    255,
+    255,
+    0,
+    0.1
+  ) !important; /* Użyj !important aby nadpisać inne tła */
+}
+
+.block-ghost-preview {
+  position: absolute;
+  inset: 0; /* Rozciągnij na cały kontener rodzica */
+  margin: 4px; /* Mały margines, aby nie zakrywać całkowicie ramki celu */
+  padding: 0.75rem; /* p-3 */
+  border-radius: 0.375rem; /* rounded */
+  border: 2px dashed rgba(255, 200, 0, 0.7);
+  background-color: rgba(255, 200, 0, 0.2); /* Lekko pomarańczowo-żółty */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Aby nie przechwytywał zdarzeń myszy */
+  z-index: 10; /* Aby był nad normalną zawartością */
+}
+
+.block-ghost-preview .terminal-text {
+  opacity: 0.7;
+}
+
 /* Column styles */
 .column-active {
   position: relative;
