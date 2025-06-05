@@ -281,7 +281,7 @@ const Terminal = ({
                       <div className="flex items-center">
                         <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
                         <span className="text-red-400">
-                          Kompilacja zakończona błędem: {errors.length} {errors.length === 1 ? "błąd" : errors.length === 3 || errors.length === 4 ? "błędy" : "błędów"}</span>
+                          Kompilacja zakończona błędem: {errors.length} {errors.length === 1 ? "błąd" : [2, 3, 4].includes(errors.length) ? "błędy" : "błędów"}</span>
                       </div>
                     </div>
                     {/* New prompt after error */}
