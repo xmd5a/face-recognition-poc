@@ -281,9 +281,7 @@ const Terminal = ({
                       <div className="flex items-center">
                         <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
                         <span className="text-red-400">
-                          Compilation failed: {errors.length} error
-                          {errors.length !== 1 ? "s" : ""}
-                        </span>
+                          Kompilacja zakończona błędem: {errors.length} {errors.length === 1 ? "błąd" : errors.length === 3 || errors.length === 4 ? "błędy" : "błędów"}</span>
                       </div>
                     </div>
                     {/* New prompt after error */}
@@ -302,7 +300,7 @@ const Terminal = ({
                   <div className="flex items-center">
                     <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
                     <span className="text-green-400">
-                      Compilation Successful!
+                      Kompilacja zakończona sukcesem!
                     </span>
                     {/* Optionally, a new prompt after success too, if desired */}
                     {/* <div className="flex items-baseline mt-2 mb-1">
@@ -337,7 +335,7 @@ const Terminal = ({
               >
                 <path d="M6.3 2.841A1.5 1.5 0 0 0 4 4.11V15.89a1.5 1.5 0 0 0 2.3 1.269l9.344-5.89a1.5 1.5 0 0 0 0-2.538L6.3 2.84Z" />
               </svg>
-              compile
+              kompiluj
             </button>
           </div>
         </div>
