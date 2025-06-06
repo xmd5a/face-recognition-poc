@@ -864,42 +864,42 @@ const Game = ({
                 <div className="prose prose-invert prose-sm max-w-none">
                   <ReactMarkdown>{hint}</ReactMarkdown>
                   <div className="mt-4 mb-4 controls">
-                    <h3>controls</h3>
+                    <h3>sterowanie</h3>
                   </div>
                   <div className="flex items-center space-x-2">
                     <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded">
                       ↑/↓
                     </kbd>
-                    <span className="text-xs opacity-70">Move</span>
+                    <span className="text-xs opacity-70">Przesuń</span>
 
                     <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded ml-4">
                       ←/→
                     </kbd>
-                    <span className="text-xs opacity-70">Move</span>
+                    <span className="text-xs opacity-70">Przesuń</span>
 
                     <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded ml-4">
                       Enter
                     </kbd>
-                    <span className="text-xs opacity-70">Compile</span>
+                    <span className="text-xs opacity-70">Kompiluj</span>
                   </div>
                   <div className="flex items-center space-x-2 mt-2">
                     <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded">
                       E
                     </kbd>
                     <span className="text-xs opacity-70">
-                      Pick up / Place block
+                      Podnieś / Umieść blok
                     </span>
                     <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded ml-4">
                       Esc
                     </kbd>
-                    <span className="text-xs opacity-70">Cancel selection</span>
+                    <span className="text-xs opacity-70">Usuń zaznaczenie</span>
                   </div>
                   <div className="flex items-center space-x-2 mt-2">
                     <kbd className="px-2 py-1 text-xs bg-terminal-green/10 border border-terminal-green/20 rounded">
-                      Mouse
+                      Mysz
                     </kbd>
                     <span className="text-xs opacity-70">
-                      Drag & Drop to move blocks
+                      Przeciągnij i upuść, zeby umieścić blok
                     </span>
                   </div>
                 </div>

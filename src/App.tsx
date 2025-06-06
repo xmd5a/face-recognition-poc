@@ -4,187 +4,184 @@ import type { Block } from "./components/BlockList";
 
 // --- Master Block List ---
 const allGameBlocksMaster: Block[] = [
-  // Original 8 blocks (with commands)
   {
     id: "1",
     name: "loadImage()",
-    description: "Loads an image from the source.",
+    description: "Wczytuje obraz z podanego źródła, np. z pliku lub URL.",
     command: "LOAD",
   },
   {
     id: "2",
     name: "resizeImage()",
-    description: "Resizes the image to a standard format.",
+    description: "Zmienia rozmiar obrazu na ustandaryzowany, pasujący do dalszego przetwarzania.",
     command: "RESIZE",
   },
   {
     id: "3",
     name: "detectFace()",
-    description: "Detects faces in the image.",
+    description: "Wykrywa twarze na obrazie, zaznaczając je do analizy.",
     command: "DETECT",
   },
   {
     id: "4",
     name: "extractFeatures()",
-    description: "Extracts facial features (embedding).",
+    description: "Wydobywa charakterystyczne cechy twarzy w celu porównania lub identyfikacji.",
     command: "EXTRACT",
   },
   {
     id: "5",
     name: "compareWithDatabase()",
-    description: "Compares with known faces database.",
+    description: "Porównuje uzyskane cechy z zapisanymi w bazie znanych twarzy.",
     command: "COMPARE",
   },
   {
     id: "6",
     name: "getIdentity()",
-    description: "Determines identity.",
+    description: "Określa tożsamość osoby na podstawie najlepszego dopasowania w bazie.",
     command: "IDENTIFY",
   },
   {
     id: "7",
     name: "logResult()",
-    description: "Logs the result.",
+    description: "Zapisuje wynik procesu (np. identyfikacji) do dziennika lub rejestru.",
     command: "LOG",
   },
   {
     id: "8",
     name: "displayResult()",
-    description: "Displays identification result.",
+    description: "Prezentuje użytkownikowi końcowy wynik operacji, np. tożsamość.",
     command: "DISPLAY",
   },
-  // Suggested blocks 9-15
   {
     id: "9",
     name: "normalizeData()",
-    description: "Normalizes data to a consistent format",
+    description: "Przekształca dane do jednolitego formatu, eliminując różnice techniczne.",
     command: "NORMALIZE",
   },
   {
     id: "10",
     name: "authenticateUser()",
-    description: "Authenticates the user",
+    description: "Sprawdza, czy użytkownik ma prawo dostępu do systemu lub zasobów.",
     command: "AUTH_USER",
   },
   {
     id: "11",
     name: "fetchData()",
-    description: "Fetches data from external source",
+    description: "Pobiera dane z zewnętrznego źródła, np. API lub innej bazy danych.",
     command: "FETCH_DATA",
   },
   {
     id: "12",
     name: "processPayment()",
-    description: "Processes the payment",
+    description: "Realizuje transakcję finansową, w tym obciążenie i weryfikację.",
     command: "PAY_PROC",
   },
   {
     id: "13",
     name: "updateDatabase()",
-    description: "Updates records in the database",
+    description: "Wprowadza zmiany lub aktualizacje w bazie danych.",
     command: "DB_UPDATE",
   },
   {
     id: "14",
     name: "renderUI()",
-    description: "Renders the user interface",
+    description: "Tworzy i wyświetla graficzny interfejs użytkownika.",
     command: "UI_RENDER",
   },
   {
     id: "15",
     name: "startTransaction()",
-    description: "Starts a database transaction",
+    description: "Rozpoczyna transakcję bazodanową, umożliwiając grupowanie operacji.",
     command: "TX_BEGIN",
   },
-  // Additional blocks 16-30
   {
     id: "16",
     name: "createBackup()",
-    description: "Creates a data backup",
+    description: "Tworzy kopię zapasową danych przed wykonaniem operacji.",
     command: "BACKUP_CREATE",
   },
   {
     id: "17",
     name: "validateFormat()",
-    description: "Checks file format",
+    description: "Sprawdza, czy plik ma oczekiwany format i strukturę.",
     command: "VALIDATE_FORMAT",
   },
   {
     id: "18",
     name: "compressData()",
-    description: "Compresses data",
+    description: "Zmniejsza rozmiar danych poprzez kompresję.",
     command: "COMPRESS",
   },
   {
     id: "19",
     name: "encryptData()",
-    description: "Encrypts data",
+    description: "Szyfruje dane w celu zapewnienia poufności.",
     command: "ENCRYPT",
   },
   {
     id: "20",
     name: "sendNotification()",
-    description: "Sends notification",
+    description: "Wysyła powiadomienie do użytkownika lub systemu zewnętrznego.",
     command: "NOTIFY",
   },
   {
     id: "21",
     name: "generateReport()",
-    description: "Generates report",
+    description: "Tworzy raport na podstawie zebranych danych lub wyników.",
     command: "REPORT_GEN",
   },
   {
     id: "22",
     name: "cleanupTemp()",
-    description: "Cleans temporary files",
+    description: "Usuwa tymczasowe pliki i niepotrzebne dane.",
     command: "CLEANUP",
   },
   {
     id: "23",
     name: "optimizeMemory()",
-    description: "Optimizes memory usage",
+    description: "Poprawia zarządzanie pamięcią w systemie.",
     command: "MEM_OPT",
   },
   {
     id: "24",
     name: "verifyChecksum()",
-    description: "Verifies checksum",
+    description: "Porównuje sumy kontrolne, aby wykryć ewentualne błędy w danych.",
     command: "CHECKSUM",
   },
   {
     id: "25",
     name: "parseConfig()",
-    description: "Parses configuration file",
+    description: "Odczytuje i interpretuje plik konfiguracyjny.",
     command: "CONFIG_PARSE",
   },
   {
     id: "26",
     name: "initDatabase()",
-    description: "Initializes database",
+    description: "Inicjuje bazę danych przed jej dalszym użyciem.",
     command: "DB_INIT",
   },
   {
     id: "27",
     name: "validatePermissions()",
-    description: "Validates permissions",
+    description: "Sprawdza, czy użytkownik ma odpowiednie uprawnienia.",
     command: "PERM_VALIDATE",
   },
   {
     id: "28",
     name: "createIndex()",
-    description: "Creates index",
+    description: "Tworzy indeksy w bazie danych, przyspieszające zapytania.",
     command: "INDEX_CREATE",
   },
   {
     id: "29",
     name: "optimizeQuery()",
-    description: "Optimizes query",
+    description: "Usprawnia zapytania do bazy danych, poprawiając wydajność.",
     command: "QUERY_OPT",
   },
   {
     id: "30",
     name: "handleError()",
-    description: "Handles errors",
+    description: "Obsługuje błędy — zapisuje, raportuje lub naprawia problemy.",
     command: "ERROR_HANDLE",
   },
 ];
@@ -214,23 +211,23 @@ const predefinedScenarios: ScenarioDetails[] = [
     availableBlockIds: ["1", "17", "2", "3", "9", "4", "5", "6", "8"], // 9 available
     solution: ["1", "17", "2", "3", "4", "5", "6"], // 7 required
     required: 7,
-    hint: `Arrange the functions in the right order, then to analyze the code and compile click the "compile" button.\n\n---\n### Simple Face ID Check\nThis task involves processing an image to **verify an identity** against a database. The typical flow includes:\n\n1.  *Loading* the input image.\n2.  *Detecting* faces within it.\n3.  *Aligning* the detected faces for consistency.\n4.  *Extracting* unique features (embeddings) from the aligned faces.\n5.  *Matching* these features against a known database.`,
+    hint: `Ułóż funkcje we właściwej kolejności, a następnie kliknij przycisk „kompiluj”, aby przeanalizować i uruchomić kod.\n\n---\nTwoim celem jest identyfikacja osoby na podstawie obrazu. Przemyśl, jakie etapy są niezbędne, by przeanalizować twarz i porównać ją z zapisanymi wzorcami. Zastanów się, które funkcje przygotowują obraz, a które przeprowadzają właściwe rozpoznanie.`
   },
   {
     sid: "data_integrity_check",
     name: "Data Integrity Check",
-    availableBlockIds: ["11", "17", "24", "18", "7", "20"], // 6 available
-    solution: ["11", "17", "24", "7"], // 4 required
-    required: 4,
-    hint: `Arrange the functions in the right order, then to analyze the code and compile click the "compile" button.\n\n---\n### Data Integrity Check\nThe goal is to ensure the data is **correct and valid**. This often involves:\n\n1.  *Reading* the dataset.\n2.  *Validating* its structure (schema).\n3.  *Checking* for internal consistency or contradictions.\n4.  *Generating a report* of findings.\n5.  *Logging* any errors or inconsistencies found.`,
+    availableBlockIds: ["11", "17", "24", "7"], // 4 available
+    solution: ["11", "17", "24"],  // 3 required
+    required: 3,
+    hint: `Ułóż funkcje we właściwej kolejności, a następnie kliknij przycisk „kompiluj”, aby przeanalizować i uruchomić kod.\n\n---\nW tym scenariuszu musisz upewnić się, że dane pochodzące z zewnętrznego źródła są wiarygodne. Skup się na krokach pozwalających ocenić spójność i strukturę danych oraz sposobie ich dokumentowania.`
   },
   {
     sid: "standard_db_maintenance",
     name: "Standard DB Maintenance",
-    availableBlockIds: ["25", "15", "26", "27", "13", "7", "30", "29"],
-    solution: ["25", "15", "26", "13", "7"],
+    availableBlockIds: ["25", "15", "26", "27", "13", "7", "30", "29"], // 8 available
+    solution: ["25", "15", "26", "13", "7"], // 5 required
     required: 5,
-    hint: `Arrange the functions in the right order, then to analyze the code and compile click the "compile" button.\n\n---\n### Standard DB Maintenance\nThis scenario focuses on common **database operations**.\n\n- You might need to first **connect** to the database.\n- **Backing up** is usually a critical first step.\n- Then, performing checks like **index validation** or **table optimization** makes sense.\n- Don't forget to **verify** your backup.\n- Finally, **close the connection**.`,
+    hint: `Ułóż funkcje we właściwej kolejności, a następnie kliknij przycisk „kompiluj”, aby przeanalizować i uruchomić kod.\n\n---\nZajmujesz się utrzymaniem bazy danych. Zastanów się, jakie czynności powinny zostać wykonane od momentu rozpoczęcia operacji aż po ich zapisanie. Pomocne może być rozważenie kolejności: przygotowanie — modyfikacja — zapis.`
   },
 ];
 
@@ -239,7 +236,7 @@ const validateLevelData = (data: LevelData): boolean => {
   if (data.required <= 0) return false;
   if (data.required > 7) return false;
   if (data.availableBlocks.length <= data.required) return false;
-  if (data.availableBlocks.length < data.required + 2) return false;
+  if (data.availableBlocks.length < data.required + 1) return false;
   if (data.solution.length !== data.required) return false;
   // Check if all solution blocks are in available blocks
   for (const solId of data.solution) {
